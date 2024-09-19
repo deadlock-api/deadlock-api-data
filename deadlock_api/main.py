@@ -55,7 +55,10 @@ def dynamic_cache_time(last_modified: float) -> int:
     age = time.time() - last_modified
 
     if age < CACHE_AGE:
-        APP_STATE.is_up = True
+        if APP_STATE.is_up is False:
+            WEBHOOK.content = f"Data is now up to date"
+            WEBHOOK.execute()
+            APP_STATE.is_up = True
         return int(CACHE_AGE - age)
 
     if age > 2 * CACHE_AGE:
