@@ -1,8 +1,9 @@
 import logging
+import os
 
 from fastapi import FastAPI
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from deadlock_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_api.models.build import APIBuild, Build
@@ -27,14 +28,18 @@ def redirect_to_docs():
     return RedirectResponse("/docs")
 
 
-@app.get("/builds", response_model_exclude_none=True)
-def get_builds() -> list[Build]:
+@app.get("/builds")
+def get_builds(response: Response) -> list[Build]:
+    last_modified = os.path.getmtime("builds.json")
+    response.headers["Last-Updated"] = str(int(last_modified))
     with open("builds.json") as f:
         return APIBuild.model_validate_json(f.read()).results
 
 
-@app.get("/active-matches", response_model_exclude_none=True)
-def get_active_matches() -> list[ActiveMatch]:
+@app.get("/active-matches")
+def get_active_matches(response: Response) -> list[ActiveMatch]:
+    last_modified = os.path.getmtime("active_matches.json")
+    response.headers["Last-Updated"] = str(int(last_modified))
     with open("active_matches.json") as f:
         return APIActiveMatch.model_validate_json(f.read()).active_matches
 
