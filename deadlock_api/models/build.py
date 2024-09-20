@@ -43,7 +43,7 @@ class BuildHeroDetails(BaseModel):
 class BuildHero(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    hero_build_id: int
+    hero_id: int
     hero_build_id: int
     author_account_id: int
     last_updated_timestamp: int
