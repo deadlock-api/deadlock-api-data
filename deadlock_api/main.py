@@ -22,7 +22,7 @@ APP_STATE = State()
 
 logging.basicConfig(level=logging.INFO)
 
-CACHE_AGE_ACTIVE_MATCHES = 30
+CACHE_AGE_ACTIVE_MATCHES = 10
 CACHE_AGE_BUILDS = CACHE_AGE_ACTIVE_MATCHES * 12
 
 app = FastAPI()
