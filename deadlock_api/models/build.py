@@ -71,10 +71,3 @@ class Build(BaseModel):
     num_favorites: int
     num_ignores: int
     num_reports: int
-
-
-class APIBuild(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-    response: int
-    results: list[Build]
