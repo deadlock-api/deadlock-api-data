@@ -116,6 +116,13 @@ def dynamic_cache_time(last_modified: float, max_cache_age: int) -> int:
 
 @app.get("/health", include_in_schema=False)
 def get_health():
+    age_active_matches = time.time() - os.path.getmtime("active_matches.json")
+    age_builds = time.time() - os.path.getmtime("builds.json")
+    if (
+        age_active_matches > 2 * CACHE_AGE_ACTIVE_MATCHES
+        or age_builds > 2 * CACHE_AGE_BUILDS
+    ):
+        raise HTTPException(status_code=500, detail="Data is stale")
     return {"status": "ok"}
 
 
