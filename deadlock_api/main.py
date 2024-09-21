@@ -105,7 +105,7 @@ def dynamic_cache_time(last_modified: float, max_cache_age: int) -> int:
             APP_STATE.is_up = True
         return int(max_cache_age - age)
 
-    if age > 2 * max_cache_age:
+    if age > max_cache_age + 120:
         print("Data is stale")
         if APP_STATE.is_up:
             WEBHOOK.content = f"Data last updated {int(age)} seconds ago"
@@ -119,8 +119,8 @@ def get_health():
     age_active_matches = time.time() - os.path.getmtime("active_matches.json")
     age_builds = time.time() - os.path.getmtime("builds.json")
     if (
-        age_active_matches > 2 * CACHE_AGE_ACTIVE_MATCHES
-        or age_builds > 2 * CACHE_AGE_BUILDS
+        age_active_matches > CACHE_AGE_ACTIVE_MATCHES + 120
+        or age_builds > CACHE_AGE_BUILDS + 120
     ):
         raise HTTPException(status_code=500, detail="Data is stale")
     return {"status": "ok"}
