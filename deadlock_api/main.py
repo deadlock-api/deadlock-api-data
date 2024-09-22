@@ -25,7 +25,10 @@ logging.basicConfig(level=logging.INFO)
 CACHE_AGE_ACTIVE_MATCHES = 8
 CACHE_AGE_BUILDS = CACHE_AGE_ACTIVE_MATCHES * 20
 
-app = FastAPI()
+app = FastAPI(
+    title="Deadlock DATA API",
+    description="API for Deadlock game data, containing builds and active matches",
+)
 
 
 @app.get("/")
