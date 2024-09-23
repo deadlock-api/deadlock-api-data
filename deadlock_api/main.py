@@ -92,12 +92,12 @@ def get_builds_by_hero_name(response: Response, hero_name: str) -> list[Build]:
 def get_active_matches(
     response: Response, parse_objectives: bool = False
 ) -> list[ActiveMatch]:
-    ActiveMatch.parse_objectives = parse_objectives
     last_modified = os.path.getmtime("active_matches.json")
     cache_time = dynamic_cache_time(last_modified, CACHE_AGE_ACTIVE_MATCHES)
     response.headers["Cache-Control"] = f"public, max-age={cache_time}"
     response.headers["Last-Updated"] = str(int(last_modified))
     with open("active_matches.json") as f:
+        ActiveMatch.parse_objectives = parse_objectives
         return APIActiveMatch.model_validate_json(f.read()).active_matches
 
 
