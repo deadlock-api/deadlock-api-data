@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pydantic import BaseModel, ConfigDict, computed_field
 
 
@@ -70,15 +72,20 @@ class ActiveMatch(BaseModel):
     game_mode: int
     match_score: int
     region_mode: int
+    parse_objectives: ClassVar[bool] = False
 
     @computed_field
     @property
-    def objectives_team0(self) -> ActiveMatchObjectives:
+    def objectives_team0(self) -> ActiveMatchObjectives | None:
+        if self.parse_objectives is False:
+            return None
         return ActiveMatchObjectives.from_mask(self.objectives_mask_team0)
 
     @computed_field
     @property
-    def objectives_team1(self) -> ActiveMatchObjectives:
+    def objectives_team1(self) -> ActiveMatchObjectives | None:
+        if self.parse_objectives is False:
+            return None
         return ActiveMatchObjectives.from_mask(self.objectives_mask_team1)
 
 

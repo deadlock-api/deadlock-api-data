@@ -88,8 +88,11 @@ def get_builds_by_hero_name(response: Response, hero_name: str) -> list[Build]:
     return filtered
 
 
-@app.get("/active-matches")
-def get_active_matches(response: Response) -> list[ActiveMatch]:
+@app.get("/active-matches", response_model_exclude_none=True)
+def get_active_matches(
+    response: Response, parse_objectives: bool = False
+) -> list[ActiveMatch]:
+    ActiveMatch.parse_objectives = parse_objectives
     last_modified = os.path.getmtime("active_matches.json")
     cache_time = dynamic_cache_time(last_modified, CACHE_AGE_ACTIVE_MATCHES)
     response.headers["Cache-Control"] = f"public, max-age={cache_time}"
