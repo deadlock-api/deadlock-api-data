@@ -1,34 +1,19 @@
 import logging
-import os
-import time
 
-from discord_webhook import DiscordWebhook
-from fastapi import FastAPI, HTTPException
-from pydantic import TypeAdapter
-from starlette.responses import RedirectResponse, Response
+from fastapi import FastAPI
+from starlette.responses import RedirectResponse
 
-from deadlock_api.models.active_match import ActiveMatch, APIActiveMatch
-from deadlock_api.models.build import Build
-
-WEBHOOK_URL = "https://discord.com/api/webhooks/1286415194427363380/Bb5mGAqn1yicXzRigxOkyYxZiGsL1AXI-PqxMf7Z7oxqTh4wBsN1oGHThbDGhKNZ9NAC"
-WEBHOOK = DiscordWebhook(url=WEBHOOK_URL)
-
-
-class State:
-    is_up: bool = True
-
-
-APP_STATE = State()
+from deadlock_api.routers import base, v1
 
 logging.basicConfig(level=logging.INFO)
-
-CACHE_AGE_ACTIVE_MATCHES = 8
-CACHE_AGE_BUILDS = CACHE_AGE_ACTIVE_MATCHES * 20
 
 app = FastAPI(
     title="Deadlock Data API",
     description="API for Deadlock game data, containing builds and active matches",
 )
+
+app.include_router(base.router, include_in_schema=False)
+app.include_router(v1.router)
 
 
 @app.get("/", include_in_schema=False)
@@ -36,99 +21,8 @@ def redirect_to_docs():
     return RedirectResponse("/docs")
 
 
-@app.get("/builds")
-def get_builds(response: Response) -> dict[str, list[Build]]:
-    last_modified = os.path.getmtime("builds.json")
-    cache_time = dynamic_cache_time(last_modified, CACHE_AGE_BUILDS)
-    response.headers["Cache-Control"] = f"public, max-age={cache_time}"
-    response.headers["Last-Updated"] = str(int(last_modified))
-    ta = TypeAdapter(dict[str, list[Build]])
-    with open("builds.json") as f:
-        return ta.validate_json(f.read())
-
-
-@app.get("/builds/{build_id}")
-def get_build(response: Response, build_id: int) -> Build:
-    builds = get_builds(response)
-    build = next(
-        (
-            b
-            for bs in builds.values()
-            for b in bs
-            if b.hero_build.hero_build_id == build_id
-        ),
-        None,
-    )
-    if build is None:
-        raise HTTPException(status_code=404, detail="Build not found")
-    return build
-
-
-@app.get("/builds/by-hero-id/{hero_id}")
-def get_builds_by_hero_id(response: Response, hero_id: int) -> list[Build]:
-    builds = get_builds(response)
-    filtered = {
-        k: [h for h in v if h.hero_build.hero_id == hero_id] for k, v in builds.items()
-    }
-    filtered = {k: v for k, v in filtered.items() if len(v) > 0}
-    if len(filtered) == 0:
-        raise HTTPException(status_code=404, detail="Hero not found")
-    return next(v for k, v in builds.items())
-
-
-@app.get("/builds/by-hero-name/{hero_name}")
-def get_builds_by_hero_name(response: Response, hero_name: str) -> list[Build]:
-    builds = get_builds(response)
-    filtered = next(
-        (v for k, v in builds.items() if k.lower() == hero_name.lower()),
-        None,
-    )
-    if filtered is None:
-        raise HTTPException(status_code=404, detail="Hero not found")
-    return filtered
-
-
-@app.get("/active-matches", response_model_exclude_none=True)
-def get_active_matches(
-    response: Response, parse_objectives: bool = False
-) -> list[ActiveMatch]:
-    last_modified = os.path.getmtime("active_matches.json")
-    cache_time = dynamic_cache_time(last_modified, CACHE_AGE_ACTIVE_MATCHES)
-    response.headers["Cache-Control"] = f"public, max-age={cache_time}"
-    response.headers["Last-Updated"] = str(int(last_modified))
-    with open("active_matches.json") as f:
-        ActiveMatch.parse_objectives = parse_objectives
-        return APIActiveMatch.model_validate_json(f.read()).active_matches
-
-
-def dynamic_cache_time(last_modified: float, max_cache_age: int) -> int:
-    age = time.time() - last_modified
-
-    if age < max_cache_age:
-        if APP_STATE.is_up is False:
-            WEBHOOK.content = f"Data is now up to date"
-            WEBHOOK.execute()
-            APP_STATE.is_up = True
-        return int(max_cache_age - age)
-
-    if age > max_cache_age + 120:
-        print("Data is stale")
-        if APP_STATE.is_up:
-            WEBHOOK.content = f"Data last updated {int(age)} seconds ago"
-            WEBHOOK.execute()
-            APP_STATE.is_up = False
-    return 10
-
-
 @app.get("/health", include_in_schema=False)
 def get_health():
-    age_active_matches = time.time() - os.path.getmtime("active_matches.json")
-    age_builds = time.time() - os.path.getmtime("builds.json")
-    if (
-        age_active_matches > CACHE_AGE_ACTIVE_MATCHES + 120
-        or age_builds > CACHE_AGE_BUILDS + 120
-    ):
-        raise HTTPException(status_code=500, detail="Data is stale")
     return {"status": "ok"}
 
 
