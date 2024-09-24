@@ -17,14 +17,14 @@ WEBHOOK = DiscordWebhook(url=WEBHOOK_URL)
 def dynamic_cache_time(last_modified: float, max_cache_age: int) -> int:
     age = time.time() - last_modified
 
-    if age < max_cache_age:
+    if age <= max_cache_age:
         if APP_STATE.is_up is False:
             WEBHOOK.content = f"Data is now up to date"
             WEBHOOK.execute()
             APP_STATE.is_up = True
-        return int(max_cache_age - age)
+        return int(max_cache_age - age + 1)
 
-    if age > max_cache_age + 120:
+    if age > max_cache_age + 180:
         print("Data is stale")
         if APP_STATE.is_up:
             WEBHOOK.content = f"Data last updated {int(age)} seconds ago"
