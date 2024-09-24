@@ -1,5 +1,6 @@
 import os
 
+from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
 from pydantic import TypeAdapter
 from starlette.responses import Response
@@ -21,9 +22,7 @@ def get_builds(response: Response) -> dict[str, list[Build]]:
     cache_time = dynamic_cache_time(last_modified, CACHE_AGE_BUILDS)
     response.headers["Cache-Control"] = f"public, max-age={cache_time}"
     response.headers["Last-Updated"] = str(int(last_modified))
-    ta = TypeAdapter(dict[str, list[Build]])
-    with open("builds.json") as f:
-        return ta.validate_json(f.read())
+    return load_builds()
 
 
 @router.get("/builds/{build_id}")
@@ -75,6 +74,18 @@ def get_active_matches(
     cache_time = dynamic_cache_time(last_modified, CACHE_AGE_ACTIVE_MATCHES)
     response.headers["Cache-Control"] = f"public, max-age={cache_time}"
     response.headers["Last-Updated"] = str(int(last_modified))
+    return load_active_matches(parse_objectives)
+
+
+@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
+def load_builds() -> dict[str, list[Build]]:
+    ta = TypeAdapter(dict[str, list[Build]])
+    with open("builds.json") as f:
+        return ta.validate_json(f.read())
+
+
+@ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES - 1)
+def load_active_matches(parse_objectives) -> list[ActiveMatch]:
     with open("active_matches.json") as f:
         ActiveMatch.parse_objectives = parse_objectives
         return APIActiveMatch.model_validate_json(f.read()).active_matches
