@@ -67,7 +67,7 @@ class Build(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     hero_build: BuildHero
-    preference: BuildPreference
     num_favorites: int
     num_ignores: int
     num_reports: int
+    preference: BuildPreference | None = Field(None)
