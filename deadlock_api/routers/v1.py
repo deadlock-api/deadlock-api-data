@@ -7,7 +7,7 @@ from starlette.responses import Response
 
 from deadlock_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_api.models.build import Build
-from deadlock_api.utils import dynamic_cache_time
+from deadlock_api.utils import dynamic_cache_time, send_webhook_message
 
 CACHE_AGE_ACTIVE_MATCHES = 8
 CACHE_AGE_BUILDS = CACHE_AGE_ACTIVE_MATCHES * 20
@@ -80,12 +80,20 @@ def get_active_matches(
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_builds() -> dict[str, list[Build]]:
     ta = TypeAdapter(dict[str, list[Build]])
-    with open("builds.json") as f:
-        return ta.validate_json(f.read())
+    try:
+        with open("builds.json") as f:
+            return ta.validate_json(f.read())
+    except Exception as e:
+        send_webhook_message(f"Error loading builds: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES - 1)
 def load_active_matches(parse_objectives) -> list[ActiveMatch]:
-    with open("active_matches.json") as f:
-        ActiveMatch.parse_objectives = parse_objectives
-        return APIActiveMatch.model_validate_json(f.read()).active_matches
+    try:
+        with open("active_matches.json") as f:
+            ActiveMatch.parse_objectives = parse_objectives
+            return APIActiveMatch.model_validate_json(f.read()).active_matches
+    except Exception as e:
+        send_webhook_message(f"Error loading active matches: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
