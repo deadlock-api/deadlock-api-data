@@ -7,7 +7,7 @@ from starlette.responses import Response
 
 from deadlock_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_api.models.build import Build
-from deadlock_api.utils import dynamic_cache_time, send_webhook_message
+from deadlock_api.utils import send_webhook_message
 
 CACHE_AGE_ACTIVE_MATCHES = 8
 CACHE_AGE_BUILDS = CACHE_AGE_ACTIVE_MATCHES * 20
@@ -19,8 +19,7 @@ router = APIRouter(prefix="/v1")
 @router.get("/builds", response_model_exclude_none=True)
 def get_builds(response: Response) -> dict[str, list[Build]]:
     last_modified = os.path.getmtime("builds.json")
-    cache_time = dynamic_cache_time(last_modified, CACHE_AGE_BUILDS)
-    response.headers["Cache-Control"] = f"public, max-age={cache_time}"
+    response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     response.headers["Last-Updated"] = str(int(last_modified))
     return load_builds()
 
@@ -71,8 +70,7 @@ def get_active_matches(
     response: Response, parse_objectives: bool = False
 ) -> list[ActiveMatch]:
     last_modified = os.path.getmtime("active_matches.json")
-    cache_time = dynamic_cache_time(last_modified, CACHE_AGE_ACTIVE_MATCHES)
-    response.headers["Cache-Control"] = f"public, max-age={cache_time}"
+    response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
     response.headers["Last-Updated"] = str(int(last_modified))
     return load_active_matches(parse_objectives)
 
