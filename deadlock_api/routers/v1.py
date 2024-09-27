@@ -16,7 +16,7 @@ CACHE_AGE_BUILDS = CACHE_AGE_ACTIVE_MATCHES * 20
 router = APIRouter(prefix="/v1")
 
 
-@router.get("/builds")
+@router.get("/builds", response_model_exclude_none=True)
 def get_builds(response: Response) -> dict[str, list[Build]]:
     last_modified = os.path.getmtime("builds.json")
     cache_time = dynamic_cache_time(last_modified, CACHE_AGE_BUILDS)
@@ -25,7 +25,7 @@ def get_builds(response: Response) -> dict[str, list[Build]]:
     return load_builds()
 
 
-@router.get("/builds/{build_id}")
+@router.get("/builds/{build_id}", response_model_exclude_none=True)
 def get_build(response: Response, build_id: int) -> Build:
     builds = get_builds(response)
     build = next(
@@ -42,7 +42,7 @@ def get_build(response: Response, build_id: int) -> Build:
     return build
 
 
-@router.get("/builds/by-hero-id/{hero_id}")
+@router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
 def get_builds_by_hero_id(response: Response, hero_id: int) -> list[Build]:
     builds = get_builds(response)
     filtered = {
@@ -54,7 +54,7 @@ def get_builds_by_hero_id(response: Response, hero_id: int) -> list[Build]:
     return next(v for k, v in builds.items())
 
 
-@router.get("/builds/by-hero-name/{hero_name}")
+@router.get("/builds/by-hero-name/{hero_name}", response_model_exclude_none=True)
 def get_builds_by_hero_name(response: Response, hero_name: str) -> list[Build]:
     builds = get_builds(response)
     filtered = next(
