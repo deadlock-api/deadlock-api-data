@@ -1,4 +1,5 @@
 import os
+from time import sleep
 
 from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
@@ -11,7 +12,7 @@ from deadlock_api.utils import send_webhook_message
 
 CACHE_AGE_ACTIVE_MATCHES = 8
 CACHE_AGE_BUILDS = CACHE_AGE_ACTIVE_MATCHES * 20
-
+LOAD_FILE_RETRIES = 5
 
 router = APIRouter(prefix="/v1")
 
@@ -78,20 +79,34 @@ def get_active_matches(
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_builds() -> dict[str, list[Build]]:
     ta = TypeAdapter(dict[str, list[Build]])
-    try:
-        with open("builds.json") as f:
-            return ta.validate_json(f.read())
-    except Exception as e:
-        send_webhook_message(f"Error loading builds: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    last_exc = None
+    for i in range(LOAD_FILE_RETRIES):
+        try:
+            with open("builds.json") as f:
+                return ta.validate_json(f.read())
+        except Exception as e:
+            last_exc = e
+            print(
+                f"Error loading builds: {str(e)}, retry ({i + 1}/{LOAD_FILE_RETRIES})"
+            )
+        sleep(50)
+    send_webhook_message(f"Error loading builds: {str(last_exc)}")
+    raise HTTPException(status_code=500, detail="Failed to load builds")
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES - 1)
 def load_active_matches(parse_objectives) -> list[ActiveMatch]:
-    try:
-        with open("active_matches.json") as f:
-            ActiveMatch.parse_objectives = parse_objectives
-            return APIActiveMatch.model_validate_json(f.read()).active_matches
-    except Exception as e:
-        send_webhook_message(f"Error loading active matches: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    last_exc = None
+    for i in range(LOAD_FILE_RETRIES):
+        try:
+            with open("active_matches.json") as f:
+                ActiveMatch.parse_objectives = parse_objectives
+                return APIActiveMatch.model_validate_json(f.read()).active_matches
+        except Exception as e:
+            last_exc = e
+            print(
+                f"Error loading active matches: {str(e)}, retry ({i + 1}/{LOAD_FILE_RETRIES})"
+            )
+        sleep(50)
+    send_webhook_message(f"Error loading active matches: {str(last_exc)}")
+    raise HTTPException(status_code=500, detail="Failed to load active matches")
