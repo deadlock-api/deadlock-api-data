@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 from starlette.responses import Response
 
-from deadlock_api.models.active_match import ActiveMatch
-from deadlock_api.models.build import Build
-from deadlock_api.routers import v1
+from deadlock_data_api.models.active_match import ActiveMatch
+from deadlock_data_api.models.build import Build
+from deadlock_data_api.routers import v1
 
 router = APIRouter()
 

@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import TypeAdapter
 from starlette.responses import Response
 
-from deadlock_api.models.active_match import ActiveMatch, APIActiveMatch
-from deadlock_api.models.build import Build
-from deadlock_api.utils import send_webhook_message
+from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
+from deadlock_data_api.models.build import Build
+from deadlock_data_api.utils import send_webhook_message
 
 CACHE_AGE_ACTIVE_MATCHES = 8
 CACHE_AGE_BUILDS = CACHE_AGE_ACTIVE_MATCHES * 20

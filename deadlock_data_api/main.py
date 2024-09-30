@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.responses import RedirectResponse
 
-from deadlock_api.routers import base, v1
+from deadlock_data_api.routers import base, v1
 
 logging.basicConfig(level=logging.INFO)
 

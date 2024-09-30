@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "deadlock-api"
+name = "deadlock-data-api"
 version = "0.1.0"
 description = ""
 authors = ["Manuel Raimann <raimannma@outlook.de>"]
