@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.responses import RedirectResponse
 
@@ -11,6 +12,14 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI(
     title="Deadlock Data API",
     description="API for Deadlock game data, containing builds and active matches",
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 Instrumentator().instrument(app).expose(app, include_in_schema=False)
