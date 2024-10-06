@@ -51,7 +51,7 @@ def get_builds_by_hero_id(response: Response, hero_id: int) -> list[Build]:
     filtered = {k: v for k, v in filtered.items() if len(v) > 0}
     if len(filtered) == 0:
         raise HTTPException(status_code=404, detail="Hero not found")
-    return next(v for k, v in builds.items())
+    return next(v for k, v in filtered.items())
 
 
 @router.get("/builds/by-hero-name/{hero_name}", response_model_exclude_none=True)
