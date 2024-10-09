@@ -67,13 +67,11 @@ def get_builds_by_hero_name(response: Response, hero_name: str) -> list[Build]:
 
 
 @router.get("/active-matches", response_model_exclude_none=True)
-def get_active_matches(
-    response: Response, parse_objectives: bool = False
-) -> list[ActiveMatch]:
+def get_active_matches(response: Response) -> list[ActiveMatch]:
     last_modified = os.path.getmtime("active_matches.json")
     response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
     response.headers["Last-Updated"] = str(int(last_modified))
-    return load_active_matches(parse_objectives)
+    return load_active_matches()
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
@@ -95,12 +93,11 @@ def load_builds() -> dict[str, list[Build]]:
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES - 1)
-def load_active_matches(parse_objectives) -> list[ActiveMatch]:
+def load_active_matches() -> list[ActiveMatch]:
     last_exc = None
     for i in range(LOAD_FILE_RETRIES):
         try:
             with open("active_matches.json") as f:
-                ActiveMatch.parse_objectives = parse_objectives
                 return APIActiveMatch.model_validate_json(f.read()).active_matches
         except Exception as e:
             last_exc = e

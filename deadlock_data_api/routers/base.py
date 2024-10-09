@@ -29,7 +29,5 @@ def get_builds_by_hero_name(response: Response, hero_name: str) -> list[Build]:
 
 
 @router.get("/active-matches", response_model_exclude_none=True)
-def get_active_matches(
-    response: Response, parse_objectives: bool = False
-) -> list[ActiveMatch]:
-    return v1.get_active_matches(response, parse_objectives)
+def get_active_matches(response: Response) -> list[ActiveMatch]:
+    return v1.get_active_matches(response)
