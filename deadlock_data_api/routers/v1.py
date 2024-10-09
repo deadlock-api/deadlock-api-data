@@ -10,8 +10,8 @@ from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.utils import send_webhook_message
 
-CACHE_AGE_ACTIVE_MATCHES = 8
-CACHE_AGE_BUILDS = CACHE_AGE_ACTIVE_MATCHES * 20
+CACHE_AGE_ACTIVE_MATCHES = 20
+CACHE_AGE_BUILDS = 30 * 60
 LOAD_FILE_RETRIES = 5
 
 router = APIRouter(prefix="/v1")
