@@ -1,11 +1,18 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class BuildHeroDetailsCategoryAbility(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     ability_id: int
-    annotation: str
+    annotation: str | None
+
+    @field_validator("annotation")
+    @classmethod
+    def validate_annotation(cls, v, values):
+        if len(v) == 0:
+            return None
+        return v
 
 
 class BuildHeroDetailsCategory(BaseModel):
@@ -24,7 +31,14 @@ class BuildHeroDetailsAbilityOrderCurrencyChange(BaseModel):
     ability_id: int
     currency_type: int
     delta: int
-    annotation: str
+    annotation: str | None
+
+    @field_validator("annotation")
+    @classmethod
+    def validate_annotation(cls, v, values):
+        if len(v) == 0:
+            return None
+        return v
 
 
 class BuildHeroDetailsAbilityOrder(BaseModel):
