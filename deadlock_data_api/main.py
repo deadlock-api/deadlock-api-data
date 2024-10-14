@@ -21,7 +21,6 @@ _deadlock-api.com is not endorsed by Valve and does not reflect the views or opi
 """,
 )
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,6 +28,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
+try:
+    from deadlock_data_api.rate_limiter.limiter import RateLimitMiddleware
+
+    app.add_middleware(RateLimitMiddleware)
+except:
+    print("Rate limiting middleware failed to load")
 
 Instrumentator().instrument(app).expose(app, include_in_schema=False)
 

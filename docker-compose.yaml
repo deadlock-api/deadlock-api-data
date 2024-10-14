@@ -1,5 +1,12 @@
 services:
   app:
     build: .
+    env_file: .env
     ports:
     - "8080:8080"
+    networks:
+    - database
+
+networks:
+  database:
+    external: true
