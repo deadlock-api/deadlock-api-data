@@ -32,7 +32,14 @@ POSTGRES = psycopg2.connect(
     host=POSTGRES_HOST, port=5432, user="postgres", password=POSTGRES_PASS
 )
 
-WHITELISTED_ROUTES = ["/", "/docs", "/openapi.json"]
+WHITELISTED_ROUTES = [
+    "/",
+    "/docs",
+    "/openapi.json",
+    "/health",
+    "/robots.txt",
+    "/metrics",
+]
 RATE_LIMITS = {
     "ip": [
         RateLimit(limit=20, period=10),
