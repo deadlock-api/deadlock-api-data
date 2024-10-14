@@ -49,6 +49,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         limit_results = await RateLimitMiddleware.get_limit_results(request)
         try:
             for status in limit_results:
+                print(f"Checking {status.key}: {status.count}/{status.limit}")
                 status.raise_for_limit()
         except HTTPException as e:
             print(f"Rate limit exceeded: {e.headers}")
@@ -135,6 +136,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if current_count > rate_limit.limit:
             REDIS.zrem(key, current_time)
         return RateLimitStatus(
+            key=key,
             count=current_count,
             limit=rate_limit.limit,
             period=rate_limit.period,

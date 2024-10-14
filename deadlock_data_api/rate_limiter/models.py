@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class RateLimitStatus(BaseModel):
+    key: str
     count: int
     limit: int
     period: int
