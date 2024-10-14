@@ -49,7 +49,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         limit_results = await RateLimitMiddleware.get_limit_results(request)
         try:
             for status in limit_results:
-                print(f"Checking {status.key}: {status.count}/{status.limit}")
+                print(
+                    f"Checking {status.key}: {status.count}/{status.limit} in {status.period}s"
+                )
                 status.raise_for_limit()
         except HTTPException as e:
             print(f"Rate limit exceeded: {e.headers}")
