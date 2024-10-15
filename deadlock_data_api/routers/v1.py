@@ -66,7 +66,11 @@ def get_builds_by_hero_name(response: Response, hero_name: str) -> list[Build]:
     return filtered
 
 
-@router.get("/active-matches", response_model_exclude_none=True)
+@router.get(
+    "/active-matches",
+    response_model_exclude_none=True,
+    summary="Updates every 20s | Rate Limit 1req/15s",
+)
 def get_active_matches(response: Response) -> list[ActiveMatch]:
     last_modified = os.path.getmtime("active_matches.json")
     response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
