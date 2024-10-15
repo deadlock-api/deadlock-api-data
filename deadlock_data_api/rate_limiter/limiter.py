@@ -43,7 +43,7 @@ WHITELISTED_ROUTES = [
 RATE_LIMITS = {
     "ip": [
         RateLimit(limit=20, period=10),
-        RateLimit(limit=1, period=10, path="/v1/active-matches"),
+        RateLimit(limit=1, period=15, path="/v1/active-matches"),
     ],
 }
 
