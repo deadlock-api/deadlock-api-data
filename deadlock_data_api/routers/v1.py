@@ -69,7 +69,7 @@ def get_builds_by_hero_name(response: Response, hero_name: str) -> list[Build]:
 @router.get(
     "/active-matches",
     response_model_exclude_none=True,
-    summary="Updates every 20s | Rate Limit 1req/15s",
+    summary="Updates every 20s | Rate Limit 1req/10s",
 )
 def get_active_matches(response: Response) -> list[ActiveMatch]:
     last_modified = os.path.getmtime("active_matches.json")
