@@ -25,12 +25,18 @@ POSTGRES_PASS = os.environ.get("POSTGRES_PASS")
 
 ENFORCE_RATE_LIMITS: bool = bool(os.environ.get("ENFORCE_RATE_LIMITS", False))
 
-REDIS = redis.Redis(
-    host=REDIS_HOST, port=6379, password=REDIS_PASS, db=0, decode_responses=True
-)
-POSTGRES = psycopg2.connect(
-    host=POSTGRES_HOST, port=5432, user="postgres", password=POSTGRES_PASS
-)
+
+def redis_conn():
+    return redis.Redis(
+        host=REDIS_HOST, port=6379, password=REDIS_PASS, db=0, decode_responses=True
+    )
+
+
+def postgres_conn():
+    return psycopg2.connect(
+        host=POSTGRES_HOST, port=5432, user="postgres", password=POSTGRES_PASS
+    )
+
 
 WHITELISTED_ROUTES = [
     "/",
@@ -107,7 +113,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     @ttl_cache(ttl=60)
     def get_limits_by_api_key(key: UUID) -> list[RateLimit]:
         limits = []
-        with POSTGRES.cursor() as cursor:
+        with postgres_conn.cursor() as cursor:
             cursor.execute(
                 "SELECT rate_global_limit, rate_global_period FROM api_keys WHERE key = %s",
                 (str(key),),
@@ -130,7 +136,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     @staticmethod
     async def limit_by_key(key: str, rate_limit: RateLimit) -> RateLimitStatus:
         current_time = float(time.time())
-        pipe = REDIS.pipeline()
+        pipe = redis_conn().pipeline()
         pipe.zremrangebyscore(key, 0, current_time - MAX_TTL_SECONDS)
         pipe.zadd(key, {str(current_time): current_time})
         pipe.zrange(key, current_time - rate_limit.period, current_time, byscore=True)
@@ -143,7 +149,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         assert len(times) == len(filtered_times)
         current_count = len(filtered_times)
         if current_count > rate_limit.limit:
-            REDIS.zrem(key, current_time)
+            redis_conn().zrem(key, current_time)
         return RateLimitStatus(
             key=key,
             count=current_count,
