@@ -113,7 +113,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     @ttl_cache(ttl=60)
     def get_limits_by_api_key(key: UUID) -> list[RateLimit]:
         limits = []
-        with postgres_conn.cursor() as cursor:
+        with postgres_conn().cursor() as cursor:
             cursor.execute(
                 "SELECT rate_global_limit, rate_global_period FROM api_keys WHERE key = %s",
                 (str(key),),
