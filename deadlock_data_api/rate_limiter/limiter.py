@@ -42,7 +42,6 @@ def apply_limits(
     ip_limits: list[RateLimit],
     key_default_limits: list[RateLimit] | None = None,
 ):
-    LOGGER.info(f"Applying rate limits: {key=}")
     ip = request.headers.get("CF-Connecting-IP", request.client.host)
     api_key = request.headers.get("X-API-Key", request.query_params.get("api_key"))
     api_key = api_key.lstrip("HEXE-") if utils.is_valid_uuid(api_key) else None
