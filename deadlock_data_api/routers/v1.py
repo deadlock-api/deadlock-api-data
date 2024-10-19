@@ -85,9 +85,7 @@ def load_builds(
 
     if limit is not None or start is not None:
         if start is None:
-            raise HTTPException(
-                status_code=400, detail="Limit cannot be provided without start"
-            )
+            start = 0
         if limit is None:
             raise HTTPException(
                 status_code=400, detail="Start cannot be provided without limit"
@@ -126,9 +124,7 @@ def load_builds_by_hero(
 
     if limit is not None or start is not None:
         if start is None:
-            raise HTTPException(
-                status_code=400, detail="Limit cannot be provided without start"
-            )
+            start = 0
         if limit is None:
             raise HTTPException(
                 status_code=400, detail="Start cannot be provided without limit"
@@ -167,9 +163,7 @@ def load_builds_by_author(
 
     if limit is not None or start is not None:
         if start is None:
-            raise HTTPException(
-                status_code=400, detail="Limit cannot be provided without start"
-            )
+            start = 0
         if limit is None:
             raise HTTPException(
                 status_code=400, detail="Start cannot be provided without limit"
