@@ -5,10 +5,13 @@ from typing import Literal
 
 from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
+from starlette.requests import Request
 from starlette.responses import Response
 
 from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_data_api.models.build import Build
+from deadlock_data_api.rate_limiter import limiter
+from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.utils import send_webhook_message
 
 CACHE_AGE_ACTIVE_MATCHES = 20
@@ -20,46 +23,75 @@ router = APIRouter(prefix="/v1")
 
 @router.get("/builds", response_model_exclude_none=True)
 def get_builds(
-    response: Response,
+    req: Request,
+    res: Response,
     start: int | None = None,
     limit: int | None = None,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
-    response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
+    limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=10, period=1)])
+    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_builds(start, limit, sort_by, sort_direction)
 
 
 @router.get("/builds/{build_id}", response_model_exclude_none=True)
-def get_build(response: Response, build_id: int) -> Build:
-    response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
+def get_build(req: Request, res: Response, build_id: int) -> Build:
+    limiter.apply_limits(req, res, "/v1/builds/{id}", [RateLimit(limit=100, period=1)])
+    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_build(build_id)
 
 
 @router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
 def get_builds_by_hero_id(
-    response: Response,
+    req: Request,
+    res: Response,
     hero_id: int,
     start: int | None = None,
     limit: int | None = None,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
-    response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
+    limiter.apply_limits(
+        req, res, "/v1/builds/by-hero-id/{hero_id}", [RateLimit(limit=100, period=1)]
+    )
+    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_builds_by_hero(hero_id, start, limit, sort_by, sort_direction)
 
 
-@router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
+@router.get("/builds/by-author-id/{author_id}", response_model_exclude_none=True)
 def get_builds_by_author_id(
-    response: Response,
+    req: Request,
+    res: Response,
     author_id: int,
     start: int | None = None,
     limit: int | None = None,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
-    response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
+    limiter.apply_limits(
+        req,
+        res,
+        "/v1/builds/by-author-id/{author_id}",
+        [RateLimit(limit=100, period=1)],
+    )
+    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_builds_by_author(author_id, start, limit, sort_by, sort_direction)
+
+
+@router.get(
+    "/active-matches",
+    response_model_exclude_none=True,
+    summary="Updates every 20s | Rate Limit 15req/20s",
+)
+def get_active_matches(req: Request, res: Response) -> list[ActiveMatch]:
+    limiter.apply_limits(
+        req, res, "/v1/active-matches", [RateLimit(limit=15, period=20)]
+    )
+    last_modified = os.path.getmtime("active_matches.json")
+    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
+    res.headers["Last-Updated"] = str(int(last_modified))
+    return load_active_matches()
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
@@ -188,18 +220,6 @@ def load_build(build_id: int) -> Build:
     if result is None:
         raise HTTPException(status_code=404, detail="Build not found")
     return Build.model_validate_json(result[0])
-
-
-@router.get(
-    "/active-matches",
-    response_model_exclude_none=True,
-    summary="Updates every 20s | Rate Limit 15req/20s",
-)
-def get_active_matches(response: Response) -> list[ActiveMatch]:
-    last_modified = os.path.getmtime("active_matches.json")
-    response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
-    response.headers["Last-Updated"] = str(int(last_modified))
-    return load_active_matches()
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES - 1)

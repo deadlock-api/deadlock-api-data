@@ -37,6 +37,7 @@ class RateLimitStatus(BaseModel):
 
     def raise_for_limit(self):
         if self.is_limited:
+            print(f"Rate limit exceeded: {self.headers}")
             raise HTTPException(
                 status_code=429,
                 detail={
@@ -51,7 +52,3 @@ class RateLimit(BaseModel):
     limit: int
     period: int
     path: str | None = None
-
-
-class InvalidAPIKey(Exception):
-    pass
