@@ -5,6 +5,7 @@ import time
 import psycopg2
 import redis
 from cachetools.func import ttl_cache
+from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -62,7 +63,11 @@ def apply_limits(
             f"next_request: {s.next_request_in}"
         )
         if ENFORCE_RATE_LIMITS:
-            s.raise_for_limit()
+            try:
+                s.raise_for_limit()
+            except HTTPException as e:
+                LOGGER.warning(f"Rate limit exceeded: {e.headers} by {ip=} {api_key=}")
+                raise e
     status = sorted(status, key=lambda x: x.remaining)[0]
     response.headers.update(status.headers)
 

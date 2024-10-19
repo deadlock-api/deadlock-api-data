@@ -40,7 +40,6 @@ class RateLimitStatus(BaseModel):
 
     def raise_for_limit(self):
         if self.is_limited:
-            LOGGER.warning(f"Rate limit exceeded: {self.headers}")
             raise HTTPException(
                 status_code=429,
                 detail={
