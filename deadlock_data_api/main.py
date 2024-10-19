@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.gzip import GZipMiddleware
-from starlette.responses import PlainTextResponse, RedirectResponse
+from starlette.responses import FileResponse, PlainTextResponse, RedirectResponse
 
 from deadlock_data_api.routers import base, v1
 
@@ -54,6 +54,11 @@ def get_health():
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
 def get_robots() -> str:
     return "User-Agent: *\nDisallow: /\nAllow: /docs\nAllow: /\n"
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def get_favicon():
+    return FileResponse("favicon.ico")
 
 
 if __name__ == "__main__":
