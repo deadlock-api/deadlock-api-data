@@ -4,7 +4,6 @@ from time import sleep
 
 from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
-from pydantic import TypeAdapter
 from starlette.responses import Response
 
 from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
@@ -19,9 +18,11 @@ router = APIRouter(prefix="/v1")
 
 
 @router.get("/builds", response_model_exclude_none=True)
-def get_builds(response: Response) -> dict[int, list[Build]]:
+def get_builds(
+    response: Response, start: int | None = None, limit: int | None = None
+) -> list[Build]:
     response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds()
+    return load_builds(start, limit)
 
 
 @router.get("/builds/{build_id}", response_model_exclude_none=True)
@@ -31,44 +32,96 @@ def get_build(response: Response, build_id: int) -> Build:
 
 
 @router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
-def get_builds_by_hero_id(response: Response, hero_id: int) -> list[Build]:
+def get_builds_by_hero_id(
+    response: Response, hero_id: int, start: int | None = None, limit: int | None = None
+) -> list[Build]:
     response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_hero(hero_id)
+    return load_builds_by_hero(hero_id, start, limit)
 
 
 @router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
-def get_builds_by_author_id(response: Response, author_id: int) -> list[Build]:
+def get_builds_by_author_id(
+    response: Response,
+    author_id: int,
+    start: int | None = None,
+    limit: int | None = None,
+) -> list[Build]:
     response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_author(author_id)
+    return load_builds_by_author(author_id, start, limit)
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds() -> dict[int, list[Build]]:
+def load_builds(start: int | None = None, limit: int | None = None) -> list[Build]:
+    if limit is not None or start is not None:
+        if start is None:
+            raise HTTPException(
+                status_code=400, detail="Limit cannot be provided without start"
+            )
+        if limit is None:
+            raise HTTPException(
+                status_code=400, detail="Start cannot be provided without limit"
+            )
+        query = "SELECT json(data) as builds FROM hero_builds LIMIT ? OFFSET ?"
+        args = (limit, start)
+    else:
+        query = "SELECT json(data) as builds FROM hero_builds"
+        args = ()
+
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
-    query = "SELECT hero, json_group_array(json(data)) as builds FROM hero_builds GROUP BY hero"
-    cursor.execute(query)
-    result = cursor.fetchall()
-    ta = TypeAdapter(list[Build])
-    return {hero: ta.validate_json(data) for hero, data in result}
-
-
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds_by_hero(hero_id: int) -> list[Build]:
-    conn = sqlite3.connect("builds.db")
-    cursor = conn.cursor()
-    query = "SELECT json(data) as builds FROM hero_builds WHERE hero = ?"
-    cursor.execute(query, (hero_id,))
+    cursor.execute(query, args)
     results = cursor.fetchall()
     return [Build.model_validate_json(result[0]) for result in results]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds_by_author(author_id: int) -> list[Build]:
+def load_builds_by_hero(
+    hero_id: int, start: int | None = None, limit: int | None = None
+) -> list[Build]:
+    if limit is not None or start is not None:
+        if start is None:
+            raise HTTPException(
+                status_code=400, detail="Limit cannot be provided without start"
+            )
+        if limit is None:
+            raise HTTPException(
+                status_code=400, detail="Start cannot be provided without limit"
+            )
+        query = "SELECT json(data) as builds FROM hero_builds WHERE hero = ? LIMIT ? OFFSET ?"
+        args = (hero_id, limit, start)
+    else:
+        query = "SELECT json(data) as builds FROM hero_builds WHERE hero = ?"
+        args = (hero_id,)
+
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
-    query = "SELECT json(data) as builds FROM hero_builds WHERE author_id = ?"
-    cursor.execute(query, (author_id,))
+    cursor.execute(query, args)
+    results = cursor.fetchall()
+    return [Build.model_validate_json(result[0]) for result in results]
+
+
+@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
+def load_builds_by_author(
+    author_id: int, start: int | None = None, limit: int | None = None
+) -> list[Build]:
+    if limit is not None or start is not None:
+        if start is None:
+            raise HTTPException(
+                status_code=400, detail="Limit cannot be provided without start"
+            )
+        if limit is None:
+            raise HTTPException(
+                status_code=400, detail="Start cannot be provided without limit"
+            )
+        query = "SELECT json(data) as builds FROM hero_builds WHERE author_id = ? LIMIT ? OFFSET ?"
+        args = (author_id, limit, start)
+    else:
+        query = "SELECT json(data) as builds FROM hero_builds WHERE author_id = ?"
+        args = (author_id,)
+
+    conn = sqlite3.connect("builds.db")
+    cursor = conn.cursor()
+    cursor.execute(query, args)
     results = cursor.fetchall()
     return [Build.model_validate_json(result[0]) for result in results]
 
