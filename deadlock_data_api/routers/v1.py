@@ -91,7 +91,9 @@ def get_builds_by_author_id(
     response_model_exclude_none=True,
     summary="Updates every 20s | Rate Limit 15req/20s",
 )
-def get_active_matches(req: Request, res: Response) -> list[ActiveMatch]:
+def get_active_matches(
+    req: Request, res: Response, account_id: int | None = None
+) -> list[ActiveMatch]:
     LOGGER.info("get_active_matches")
     limiter.apply_limits(
         req, res, "/v1/active-matches", [RateLimit(limit=15, period=20)]
@@ -99,7 +101,18 @@ def get_active_matches(req: Request, res: Response) -> list[ActiveMatch]:
     last_modified = os.path.getmtime("active_matches.json")
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
     res.headers["Last-Updated"] = str(int(last_modified))
-    return load_active_matches()
+
+    def has_player(am: ActiveMatch, account_id: int) -> bool:
+        for p in am.players:
+            if p.account_id == account_id:
+                return True
+        return False
+
+    return [
+        a
+        for a in load_active_matches()
+        if account_id is None or has_player(a, account_id)
+    ]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
