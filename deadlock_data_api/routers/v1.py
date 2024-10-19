@@ -1,6 +1,7 @@
 import os
 import sqlite3
 from time import sleep
+from typing import Literal
 
 from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
@@ -19,10 +20,14 @@ router = APIRouter(prefix="/v1")
 
 @router.get("/builds", response_model_exclude_none=True)
 def get_builds(
-    response: Response, start: int | None = None, limit: int | None = None
+    response: Response,
+    start: int | None = None,
+    limit: int | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
+    sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
     response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds(start, limit)
+    return load_builds(start, limit, sort_by, sort_direction)
 
 
 @router.get("/builds/{build_id}", response_model_exclude_none=True)
@@ -33,10 +38,15 @@ def get_build(response: Response, build_id: int) -> Build:
 
 @router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
 def get_builds_by_hero_id(
-    response: Response, hero_id: int, start: int | None = None, limit: int | None = None
+    response: Response,
+    hero_id: int,
+    start: int | None = None,
+    limit: int | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
+    sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
     response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_hero(hero_id, start, limit)
+    return load_builds_by_hero(hero_id, start, limit, sort_by, sort_direction)
 
 
 @router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
@@ -45,13 +55,34 @@ def get_builds_by_author_id(
     author_id: int,
     start: int | None = None,
     limit: int | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
+    sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
     response.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_author(author_id, start, limit)
+    return load_builds_by_author(author_id, start, limit, sort_by, sort_direction)
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds(start: int | None = None, limit: int | None = None) -> list[Build]:
+def load_builds(
+    start: int | None = None,
+    limit: int | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
+    sort_direction: Literal["asc", "desc"] | None = None,
+) -> list[Build]:
+    query = "SELECT json(data) as builds FROM hero_builds"
+    args = []
+    if sort_by is not None:
+        if sort_by == "favorites":
+            query += " ORDER BY favorites"
+        elif sort_by == "ignores":
+            query += " ORDER BY ignores"
+        elif sort_by == "reports":
+            query += " ORDER BY reports"
+        elif sort_by == "updated_at":
+            query += " ORDER BY updated_at"
+        if sort_direction is not None:
+            query += f" {sort_direction}"
+
     if limit is not None or start is not None:
         if start is None:
             raise HTTPException(
@@ -61,23 +92,38 @@ def load_builds(start: int | None = None, limit: int | None = None) -> list[Buil
             raise HTTPException(
                 status_code=400, detail="Start cannot be provided without limit"
             )
-        query = "SELECT json(data) as builds FROM hero_builds LIMIT ? OFFSET ?"
-        args = (limit, start)
-    else:
-        query = "SELECT json(data) as builds FROM hero_builds"
-        args = ()
+        query += " LIMIT ? OFFSET ?"
+        args += [limit, start]
 
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
-    cursor.execute(query, args)
+    cursor.execute(query, tuple(args))
     results = cursor.fetchall()
     return [Build.model_validate_json(result[0]) for result in results]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_builds_by_hero(
-    hero_id: int, start: int | None = None, limit: int | None = None
+    hero_id: int,
+    start: int | None = None,
+    limit: int | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
+    sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
+    query = "SELECT json(data) as builds FROM hero_builds WHERE hero = ?"
+    args = [hero_id]
+    if sort_by is not None:
+        if sort_by == "favorites":
+            query += " ORDER BY favorites"
+        elif sort_by == "ignores":
+            query += " ORDER BY ignores"
+        elif sort_by == "reports":
+            query += " ORDER BY reports"
+        elif sort_by == "updated_at":
+            query += " ORDER BY updated_at"
+        if sort_direction is not None:
+            query += f" {sort_direction}"
+
     if limit is not None or start is not None:
         if start is None:
             raise HTTPException(
@@ -87,23 +133,38 @@ def load_builds_by_hero(
             raise HTTPException(
                 status_code=400, detail="Start cannot be provided without limit"
             )
-        query = "SELECT json(data) as builds FROM hero_builds WHERE hero = ? LIMIT ? OFFSET ?"
-        args = (hero_id, limit, start)
-    else:
-        query = "SELECT json(data) as builds FROM hero_builds WHERE hero = ?"
-        args = (hero_id,)
+        query += " LIMIT ? OFFSET ?"
+        args += [limit, start]
 
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
-    cursor.execute(query, args)
+    cursor.execute(query, tuple(args))
     results = cursor.fetchall()
     return [Build.model_validate_json(result[0]) for result in results]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_builds_by_author(
-    author_id: int, start: int | None = None, limit: int | None = None
+    author_id: int,
+    start: int | None = None,
+    limit: int | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
+    sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
+    query = "SELECT json(data) as builds FROM hero_builds WHERE author_id = ?"
+    args = [author_id]
+    if sort_by is not None:
+        if sort_by == "favorites":
+            query += " ORDER BY favorites"
+        elif sort_by == "ignores":
+            query += " ORDER BY ignores"
+        elif sort_by == "reports":
+            query += " ORDER BY reports"
+        elif sort_by == "updated_at":
+            query += " ORDER BY updated_at"
+        if sort_direction is not None:
+            query += f" {sort_direction}"
+
     if limit is not None or start is not None:
         if start is None:
             raise HTTPException(
@@ -113,15 +174,12 @@ def load_builds_by_author(
             raise HTTPException(
                 status_code=400, detail="Start cannot be provided without limit"
             )
-        query = "SELECT json(data) as builds FROM hero_builds WHERE author_id = ? LIMIT ? OFFSET ?"
-        args = (author_id, limit, start)
-    else:
-        query = "SELECT json(data) as builds FROM hero_builds WHERE author_id = ?"
-        args = (author_id,)
+        query += " LIMIT ? OFFSET ?"
+        args += [limit, start]
 
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
-    cursor.execute(query, args)
+    cursor.execute(query, tuple(args))
     results = cursor.fetchall()
     return [Build.model_validate_json(result[0]) for result in results]
 
