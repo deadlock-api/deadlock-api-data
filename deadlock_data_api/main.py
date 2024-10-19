@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +9,7 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 
 from deadlock_data_api.routers import base, v1
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
 
 app = FastAPI(
     title="Data - Deadlock API",

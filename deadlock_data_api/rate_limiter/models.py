@@ -1,7 +1,10 @@
+import logging
 import time
 
 from fastapi import HTTPException
 from pydantic import BaseModel
+
+LOGGER = logging.getLogger(__name__)
 
 
 class RateLimitStatus(BaseModel):
@@ -37,7 +40,7 @@ class RateLimitStatus(BaseModel):
 
     def raise_for_limit(self):
         if self.is_limited:
-            print(f"Rate limit exceeded: {self.headers}")
+            LOGGER.warning(f"Rate limit exceeded: {self.headers}")
             raise HTTPException(
                 status_code=429,
                 detail={

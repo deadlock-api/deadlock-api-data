@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 from time import sleep
@@ -18,6 +19,8 @@ CACHE_AGE_ACTIVE_MATCHES = 20
 CACHE_AGE_BUILDS = 30 * 60
 LOAD_FILE_RETRIES = 5
 
+LOGGER = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/v1")
 
 
@@ -30,6 +33,7 @@ def get_builds(
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
+    LOGGER.info("get_builds")
     limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=10, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_builds(start, limit, sort_by, sort_direction)
@@ -37,6 +41,7 @@ def get_builds(
 
 @router.get("/builds/{build_id}", response_model_exclude_none=True)
 def get_build(req: Request, res: Response, build_id: int) -> Build:
+    LOGGER.info("get_build")
     limiter.apply_limits(req, res, "/v1/builds/{id}", [RateLimit(limit=100, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_build(build_id)
@@ -52,6 +57,7 @@ def get_builds_by_hero_id(
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
+    LOGGER.info("get_builds_by_hero_id")
     limiter.apply_limits(
         req, res, "/v1/builds/by-hero-id/{hero_id}", [RateLimit(limit=100, period=1)]
     )
@@ -69,6 +75,7 @@ def get_builds_by_author_id(
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
+    LOGGER.info("get_builds_by_author_id")
     limiter.apply_limits(
         req,
         res,
@@ -85,6 +92,7 @@ def get_builds_by_author_id(
     summary="Updates every 20s | Rate Limit 15req/20s",
 )
 def get_active_matches(req: Request, res: Response) -> list[ActiveMatch]:
+    LOGGER.info("get_active_matches")
     limiter.apply_limits(
         req, res, "/v1/active-matches", [RateLimit(limit=15, period=20)]
     )
@@ -101,6 +109,7 @@ def load_builds(
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
+    LOGGER.debug("load_builds")
     query = "SELECT json(data) as builds FROM hero_builds"
     args = []
     if sort_by is not None:
@@ -140,6 +149,7 @@ def load_builds_by_hero(
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
+    LOGGER.debug("load_builds_by_hero")
     query = "SELECT json(data) as builds FROM hero_builds WHERE hero = ?"
     args = [hero_id]
     if sort_by is not None:
@@ -179,6 +189,7 @@ def load_builds_by_author(
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
+    LOGGER.debug("load_builds_by_author")
     query = "SELECT json(data) as builds FROM hero_builds WHERE author_id = ?"
     args = [author_id]
     if sort_by is not None:
@@ -212,6 +223,7 @@ def load_builds_by_author(
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_build(build_id: int) -> Build:
+    LOGGER.debug("load_build")
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
     query = "SELECT json(data) FROM hero_builds WHERE build_id = ?"
@@ -224,6 +236,7 @@ def load_build(build_id: int) -> Build:
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES - 1)
 def load_active_matches() -> list[ActiveMatch]:
+    LOGGER.debug("load_active_matches")
     last_exc = None
     for i in range(LOAD_FILE_RETRIES):
         try:
@@ -231,7 +244,7 @@ def load_active_matches() -> list[ActiveMatch]:
                 return APIActiveMatch.model_validate_json(f.read()).active_matches
         except Exception as e:
             last_exc = e
-            print(
+            LOGGER.warning(
                 f"Error loading active matches: {str(e)}, retry ({i + 1}/{LOAD_FILE_RETRIES})"
             )
         sleep(50)

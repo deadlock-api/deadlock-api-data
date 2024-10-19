@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 
@@ -9,6 +10,8 @@ from starlette.responses import Response
 
 from deadlock_data_api import utils
 from deadlock_data_api.rate_limiter.models import RateLimit, RateLimitStatus
+
+LOGGER = logging.getLogger(__name__)
 
 MAX_TTL_SECONDS = 60 * 60  # 1 hour
 
@@ -39,6 +42,7 @@ def apply_limits(
     ip_limits: list[RateLimit],
     key_default_limits: list[RateLimit] | None = None,
 ):
+    LOGGER.info(f"Applying rate limits: {key=}")
     ip = request.headers.get("CF-Connecting-IP", request.client.host)
     api_key = request.headers.get("X-API-Key", request.query_params.get("api_key"))
     api_key = api_key if utils.is_valid_uuid(api_key) else None
@@ -51,7 +55,7 @@ def apply_limits(
     )
     status = [limit_by_key(f"{ip}:{key}", l) for l in limits]
     for s in status:
-        print(
+        LOGGER.info(
             f"count: {s.count}, "
             f"limit: {s.limit}, "
             f"period: {s.period}, "
@@ -78,7 +82,7 @@ def get_extra_api_key_limits(api_key: str, path: str) -> list[RateLimit]:
 
 
 def limit_by_key(key: str, rate_limit: RateLimit) -> RateLimitStatus:
-    print(f"Checking rate limit: {key=} {rate_limit=}")
+    LOGGER.debug(f"Checking rate limit: {key=} {rate_limit=}")
     current_time = float(time.time())
     pipe = redis_conn().pipeline()
     pipe.zremrangebyscore(key, 0, current_time - MAX_TTL_SECONDS)
