@@ -45,7 +45,11 @@ def apply_limits(
 ):
     ip = request.headers.get("CF-Connecting-IP", request.client.host)
     api_key = request.headers.get("X-API-Key", request.query_params.get("api_key"))
-    api_key = api_key.lstrip("HEXE-") if utils.is_valid_uuid(api_key) else None
+    api_key = (
+        api_key.lstrip("HEXE-")
+        if api_key is not None and utils.is_valid_uuid(api_key.lstrip("HEXE-"))
+        else None
+    )
     limits = (
         get_extra_api_key_limits(api_key, request.url.path)
         or key_default_limits
