@@ -33,6 +33,7 @@ class RateLimitStatus(BaseModel):
     def headers(self) -> dict[str, str]:
         return {
             "RateLimit-Limit": str(self.limit),
+            "RateLimit-Period": str(self.period),
             "RateLimit-Remaining": str(self.remaining),
             "RateLimit-Reset": str(self.next_request_in),
             "Retry-After": str(self.next_request_in),
