@@ -50,14 +50,17 @@ def apply_limits(
         if api_key is not None and utils.is_valid_uuid(api_key.lstrip("HEXE-"))
         else None
     )
-    limits = (
-        get_extra_api_key_limits(api_key, request.url.path)
-        or key_default_limits
-        or ip_limits
-        if api_key
-        else ip_limits
-    )
-    status = [limit_by_key(f"{ip}:{key}", l) for l in limits]
+    limits = []
+    prefix = ip
+    if api_key:
+        limits = (
+            get_extra_api_key_limits(api_key, request.url.path) or key_default_limits
+        )
+        if limits:
+            prefix = api_key
+    if not limits:
+        limits = ip_limits
+    status = [limit_by_key(f"{prefix}:{key}", l) for l in limits]
     for s in status:
         LOGGER.info(
             f"count: {s.count}, "
