@@ -79,13 +79,13 @@ class APIKeyHeaderOrQuery(APIKeyBase):
         description: str | None = None,
         auto_error: bool = True,
     ):
-        self.query_model: APIKey = APIKey(
+        self.model: APIKey = APIKey(
             **{"in": APIKeyIn.query},  # type: ignore[arg-type]
             name=query_name,
             description=description,
         )
         self.header_model: APIKey = APIKey(
-            **{"in": APIKeyIn.query},  # type: ignore[arg-type]
+            **{"in": APIKeyIn.header},  # type: ignore[arg-type]
             name=header_name,
             description=description,
         )
@@ -93,7 +93,7 @@ class APIKeyHeaderOrQuery(APIKeyBase):
         self.auto_error = auto_error
 
     async def __call__(self, request: Request) -> str | None:
-        query_api_key = request.query_params.get(self.query_model.name)
+        query_api_key = request.query_params.get(self.model.name)
         header_api_key = request.headers.get(self.header_model.name)
         if not query_api_key and not header_api_key:
             if self.auto_error:
