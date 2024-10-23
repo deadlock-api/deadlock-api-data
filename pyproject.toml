@@ -4,6 +4,10 @@ version = "0.1.0"
 description = ""
 authors = ["Manuel Raimann <raimannma@outlook.de>"]
 readme = "README.md"
+packages = [
+    { include = "deadlock_data_api", from = "." },
+    { include = "protos", from = "protos" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -12,9 +16,11 @@ uvicorn = "^0.30.6"
 discord-webhook = "^1.3.1"
 cachetools = "^5.5.0"
 prometheus-fastapi-instrumentator = "^7.0.0"
-redis = {extras = ["hiredis"], version = "^5.1.1"}
+redis = { extras = ["hiredis"], version = "^5.1.1" }
 psycopg2-binary = "^2.9.10"
 uuid = "^1.30"
+protobuf = "^5.28.3"
+clickhouse-pool = "^0.6.0"
 
 
 [build-system]

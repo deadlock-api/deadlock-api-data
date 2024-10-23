@@ -182,6 +182,142 @@ files = [
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
+name = "clickhouse-driver"
+version = "0.2.7"
+description = "Python driver with native interface for ClickHouse"
+optional = false
+python-versions = ">=3.7, <4"
+files = [
+    {file = "clickhouse-driver-0.2.7.tar.gz", hash = "sha256:299cfbe6d561955d88eeab6e09f3de31e2f6daccc6fdd904a59e46357d2d28d9"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:c44fefc2fd44f432d5b162bfe34ad76840137c34167d46a18c554a7c7c6e3566"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:e018452a7bf8d8c0adf958afbc5b0d29e402fc09a1fb34e9186293eae57f3b4e"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ff8b09f8b13df28d2f91ee3d0d2edd9589cbda76b74acf60669112219cea8c9d"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:54aa91c9512fd5a73f038cae4f67ca2ff0b2f8a84de846179a31530936ef4e20"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:b8342a7ba31ccb393ee31dfd61173aa84c995b4ac0b44d404adc8463534233d5"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:199000f8adf38fade0b5a52c273a396168105539de741a18ba3e68d7fc06e0e6"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:f60a2a40602b207506e505cfb184a81cd4b752bde17153bc0b32c3931ddb792f"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-musllinux_1_1_aarch64.whl", hash = "sha256:5db3a26b18146b2b0b06d3f32ce588af5afaa38c719daf6f9606981514228a8b"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-musllinux_1_1_i686.whl", hash = "sha256:5579a31da1f3cf49630e43fbbb11cab891b78161abdcb33908b79820b7cd3a23"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-musllinux_1_1_ppc64le.whl", hash = "sha256:cc39f0fb761aed96917b0f55679174a50f9591afc0e696e745cd698ef822661f"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-musllinux_1_1_s390x.whl", hash = "sha256:9aa0f7c740e4e61886c6d388792c5d1a2084d4b5462e6dcfc24e30ca7e7f8e68"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:2caee88b6eec7b33ddbccd24501ad99ff8ff2b0a6a4471945cbfb28947a9a791"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-win32.whl", hash = "sha256:a4aef432cc7120a971eebb7ca2fddac4472e810b57e403d3a371b0c69cbb2bb0"},
+    {file = "clickhouse_driver-0.2.7-cp310-cp310-win_amd64.whl", hash = "sha256:f307de7df6bc23ad5ec8a1ba1db157f4d14de673ddd4798f37790f23255605b0"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:cbf3ca8919bf856ca6588669a863065fb732a32a6387095f64d19038fd99db9f"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:ab68b3d9b9d1386adfd3a57edd47b62858a145bf7ccc7f11b31d308195d966e5"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:985a9d60044c5ad39c6e018b852c7105ec4ebfdf4c3abe23183b4867454e570a"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:6c94330054c8d92d2286898906f843f26e2f96fc2aa11a9a96a7b5593d299bf0"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:92938f55c8f797e50e624a4b96e685178d043cdf0ede306a7fd4e7dda19b8dfd"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:05bd53e9bf49c3013d06f9e6d2812872d44b150f7a2d1cf18e1498257d42330e"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:0f1f8ed5404e283a9ded499c33eade2423fdc15e31f8a711d75e91f890d0f70b"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-musllinux_1_1_aarch64.whl", hash = "sha256:a398085e4a1766d907ac32c282d4172db38a44243bde303372396208d1cbf4bb"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-musllinux_1_1_i686.whl", hash = "sha256:fa1808593123b6056f93808f0afbc7938f06a8149cb4e381aa7b1a234c1d3c18"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-musllinux_1_1_ppc64le.whl", hash = "sha256:0512d54ae23bd4a69278e04f42b651d7c71b63ba6043e2c6bd97b11329692f99"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-musllinux_1_1_s390x.whl", hash = "sha256:5bc2b67e7e68f74ccebf95a8b3a13f13a7c34b89b32c9813103221de14c06c8b"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:04a37cdafc671cb796af3e566cef0aeb39111d82aebeecd9106a049434953b26"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-win32.whl", hash = "sha256:019538c7c23e976538e5081dd2f77a8a40bf663c638a62d857ff05f42b0c9052"},
+    {file = "clickhouse_driver-0.2.7-cp311-cp311-win_amd64.whl", hash = "sha256:5166643683584bc53fcadda73c65f6a9077feb472f3d167ecef1a1a7024973aa"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:59affab7b5a3c4aab5b6a730f606575efdefea213458de2eb14927ee4e0640f4"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:dcb93dd07fe65ac4f1a2bc0b8967911d4ad2152dbee000f025ea5cb575da5ecb"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:55a48019b79181ae1ca90e980e74c5d413c3f8829f6744e2b056646c2d435a1a"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:507463c9157240fd7c3246781e8c30df8db3c80bf68925b36ff3ad4a80c4b924"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:1e2d8d2295ee9e0cfab8ad77cb635a05da2160334b4f16ed8c3d00fbf39a2343"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e38c44546dcdb956b5ab0944cb3d51e8c98f816e75bab1a2254c478865bc6e7b"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e6690a2bdd9e7531fe50b53193279f8b35cbcd5c5ee36c0fcc112518a7d24f16"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-musllinux_1_1_aarch64.whl", hash = "sha256:bc6b4ba0a6467fd09021aa1d87a44fb4589600d61b010fca41e0dfffd0dee322"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-musllinux_1_1_i686.whl", hash = "sha256:254bbd400eb87ff547a08755bc714f712e11f7a6d3ebbbb7aaa1dd454fb16d44"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-musllinux_1_1_ppc64le.whl", hash = "sha256:7bbbe3f8b87fc1489bc15fa9c88cc9fac9d4d7d683d076f058c2c83e6ee422fd"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-musllinux_1_1_s390x.whl", hash = "sha256:745e5b18f0957d932151527f1523d0e516c199de8c589638e5f55ab2559886f3"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:0fa0357fb5f26149e3df86a117d3678329b85d8827b78a5a09bbf224d8dd4541"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-win32.whl", hash = "sha256:ace652af7ca94ba3cb3a04a5c363e135dc5009f31d8201903e21db9d5daf2358"},
+    {file = "clickhouse_driver-0.2.7-cp312-cp312-win_amd64.whl", hash = "sha256:c0ba68489544df89e4138a14b0ec3e1e5eb102d5d3283a91d9b837c420c0ab97"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:66267e4ba21fa66c97ce784a5de2202d3b7d4db3e50bfcdde92830a68f6fae30"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6cf55c285b75c178487407721baef4980b3c6515c9c0c1a6c1ea8b001afe658e"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:deeb66bb56490db2157f199c6d9aa2c53f046677be430cc834fc1e74eec6e654"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:dfe5b4020939abeeb407b4eead598c954b1573d2d2b4f174f793b196d378b9d9"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:84d39506b5f8d86a1195ebde1c66aba168f34ebce6ebd828888f0625cac54774"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:f93a27db2dcbbd3ecad36e8df4395d047cb7410e2dc69f6d037674e15442f4ee"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-musllinux_1_1_aarch64.whl", hash = "sha256:ebc29e501e47ecbfd44c89c0e5c87b2a722049d38b9e93fdd4bea510a82e16ac"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-musllinux_1_1_i686.whl", hash = "sha256:f9cc8c186fea09a94d89e5c9c4e8d05ec3a80e2f6d25673c48efec8117a13cfc"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-musllinux_1_1_ppc64le.whl", hash = "sha256:0757dfde5410c42230b24825ea3ab904a78160520e5ceb953482e133e368733b"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-musllinux_1_1_s390x.whl", hash = "sha256:c9f88818cf411f928c29ba295c677cd95773bd256b8490f5655fb489e0c6658c"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-musllinux_1_1_x86_64.whl", hash = "sha256:e19952f158ebe274c65ffeb294ba378d75048a48f31b77573948d606bed019d5"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-win32.whl", hash = "sha256:008b1f32c7c68564de8051482b72a5289b6933bca9d9b1ad1474dd448d6768ba"},
+    {file = "clickhouse_driver-0.2.7-cp37-cp37m-win_amd64.whl", hash = "sha256:622933cc9834c39f03de5d43a12f13fc7133d31d6d2597e67866d4a549ca9e60"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:92540581e5b5f36d915f14d05c30244870fb123c74b38c645fa47663053c5471"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:02dfadc6111b64e01c20b8c11266cab97d4f06685a392a183af437f2f1afb990"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e3ca17fece86fe85d97705024bec881978271931b3d00db273c9d63244f7d606"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:76474f1315ca3ab484ae28ad085b8f756c8b9a755882f93912b2149290482033"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:f5c0ff12368b34aaf58dd948b0819e5b54d261911de334d3f048328dc9354013"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8cd441b17294e90e313b08fabf84fcc782c191d2b9b2a924f163928202db6fcc"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:62aa158f61d7d84c58e8cd75b3b8340b28607e5a70132395078f578d518aaae3"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-musllinux_1_1_aarch64.whl", hash = "sha256:bcb2a39a1fef8bf1b581f06125c2a84a5b92c939b079d1a95126e3207b05dc77"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-musllinux_1_1_i686.whl", hash = "sha256:1f29cc641a65e89a51a15f6d195f565ad2761d1bd653408c6b4046c987c5fb99"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-musllinux_1_1_ppc64le.whl", hash = "sha256:ac1a43690696bda46c9a23fc6fd79b6fe22d428a18e880bdbdf5e6aeb31008c5"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-musllinux_1_1_s390x.whl", hash = "sha256:1dd5ea4584c42f85d96ddfa7d07da2abb35a797c45e4d3a66ace149ee4977cad"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:a736c0af858a3c83af03848b18754ab18dc594cc7f3bf6be0b1fac682def182c"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-win32.whl", hash = "sha256:6cb8ca47f5818c1bc5814b9ff775e383f3c50059b1fd28a02cb9be1b666929f8"},
+    {file = "clickhouse_driver-0.2.7-cp38-cp38-win_amd64.whl", hash = "sha256:a90e7dc92985669a5e6569356bb3028d9d475f95006d4487cb0789aa53f9489c"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:04b77cd6c583da9135db4a62c5a7999ae248c2dbfc0cb8e8a3d8a853b1fbfa11"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:c7671f8c0e8960d766b2e0eaefcae3088fccdd3920e9cd3dee8e344cfd0a6929"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:502d7cd28522b95a399e993ffd48487e8c12c50ce2d4e89b77b938f945304405"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:969739279f4010e7b5b6b2c9d2ab56a463aed11fdaed5e02424c1b3915f144f8"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:ed34b60f741eeb02407ea72180d77cbfc368c1be6fc2f2ff8319d1856ce67e10"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a667b48927f4420eb8c03fa33369edfbdf359a788897a01ac945263a2a611461"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:1f93aa3a90f3847872d7464ec9076482b2e812c4e7d61682daedffdf3471be00"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-musllinux_1_1_aarch64.whl", hash = "sha256:190890667215691fdf2155c3b233b39146054ab1cd854c7d91221e6ed633d71e"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-musllinux_1_1_i686.whl", hash = "sha256:ff280aeac5e96c764cd31ba1077c95601337b9a97fb0b9ed4d24c64431f2c322"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-musllinux_1_1_ppc64le.whl", hash = "sha256:01e63e35d2ab55b8eb48facf6e951968c80d27ee6703aa6c91c73d9d0a4d0efe"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-musllinux_1_1_s390x.whl", hash = "sha256:a29fb24b910dafc8c11ba882797d13ec0323a97dce80a57673116fa893d1b669"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:5f229a7853fc767e63143ea69889d49f6fd5623adc2f7b0f7eb360117d7e91a5"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-win32.whl", hash = "sha256:b7f34ad2ed509f48f8ed1f9b96e89765173a7b35d286c7350aa85934a11c0f49"},
+    {file = "clickhouse_driver-0.2.7-cp39-cp39-win_amd64.whl", hash = "sha256:78b166597afbe490cc0cdac44fed8c8b81668f87125601dda17b154f237eef5d"},
+    {file = "clickhouse_driver-0.2.7-pp310-pypy310_pp73-macosx_10_9_x86_64.whl", hash = "sha256:16ab64beb8d079cb9b3200539539a35168f524eedf890c9acefb719e25bdc96e"},
+    {file = "clickhouse_driver-0.2.7-pp310-pypy310_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:03e28fd50fc7c54874bf8e638a2ea87f73ae35bfbbf90123fdb395f38d62f159"},
+    {file = "clickhouse_driver-0.2.7-pp310-pypy310_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0677b8350acd8d186b6acd0026b62dd262d6fee428a5fa3ad9561908d4b02c39"},
+    {file = "clickhouse_driver-0.2.7-pp310-pypy310_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:a2f3c9e2182809131701bb28a606dec90525c7ab20490714714a4b3eb015454b"},
+    {file = "clickhouse_driver-0.2.7-pp310-pypy310_pp73-win_amd64.whl", hash = "sha256:e03a1a1b30cc58c9bd2cbe25bf5e40b1f1d16d52d44ddefb3af50435d1ed613c"},
+    {file = "clickhouse_driver-0.2.7-pp37-pypy37_pp73-macosx_10_9_x86_64.whl", hash = "sha256:a1be8081306a4beb12444ed8e3208e1eb6c01ed207c471b33009c13504c88139"},
+    {file = "clickhouse_driver-0.2.7-pp37-pypy37_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:933b40722cbca9b1123a5bb2fb4bafafd234deae0f3481125cb6b6fa1d39aa84"},
+    {file = "clickhouse_driver-0.2.7-pp37-pypy37_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3054b5022f9bf15a5f4663a7cd190f466e70a2d7b8d45429d8742c515b556c10"},
+    {file = "clickhouse_driver-0.2.7-pp37-pypy37_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:61744760ee046c9a268cb801ca21bfe44c4873db9901a7cd0f3ca8830205feff"},
+    {file = "clickhouse_driver-0.2.7-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:5e28427e05a72e7a4c3672e36703a2d80107ee0b3ab537e3380d726c96b07821"},
+    {file = "clickhouse_driver-0.2.7-pp38-pypy38_pp73-macosx_10_9_x86_64.whl", hash = "sha256:c483f5ec836ae87803478f2a7b9daf15343078edd6a8be7364dd9db64905bbd0"},
+    {file = "clickhouse_driver-0.2.7-pp38-pypy38_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:28220b794874e68bc2f06dbfff5748f1c5a3236922f59e127abd58d44ae20a3f"},
+    {file = "clickhouse_driver-0.2.7-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8c09877b59b34d5b3043ad70ec31543173cac8b64b4a8afaa89416b22fb28da5"},
+    {file = "clickhouse_driver-0.2.7-pp38-pypy38_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:3580f78db27119f7380627873214ae1342066f1ecb35700c1d7bf418dd70ae73"},
+    {file = "clickhouse_driver-0.2.7-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:0842ac1b2f7a9ca46dac2027849b241bccd8eb8ff1c59cb0a5874042b267b733"},
+    {file = "clickhouse_driver-0.2.7-pp39-pypy39_pp73-macosx_10_9_x86_64.whl", hash = "sha256:7a3fb585e2d3514196258a4a3b0267510c03477f3c2380239ade4c056ba689a7"},
+    {file = "clickhouse_driver-0.2.7-pp39-pypy39_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:48ea25287566d45efbaee0857ad25e8b33ffd7fd73e89424d79fe7f532962915"},
+    {file = "clickhouse_driver-0.2.7-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ee4a4935667b59b4816a5ca77300f5dbe5a7416860551d17376426b8fefc1175"},
+    {file = "clickhouse_driver-0.2.7-pp39-pypy39_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:358058cfceea9b43c4af9de81842563746f16984b34525a15b41eacf8fc2bed2"},
+    {file = "clickhouse_driver-0.2.7-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:ae760fb843dec0b5c398536ca8dfaf243f494ba8fc68132ae1bd62004b0c396a"},
+]
+
+[package.dependencies]
+pytz = "*"
+tzlocal = "*"
+
+[package.extras]
+lz4 = ["clickhouse-cityhash (>=1.0.2.1)", "lz4", "lz4 (<=3.0.1)"]
+numpy = ["numpy (>=1.12.0)", "pandas (>=0.24.0)"]
+zstd = ["clickhouse-cityhash (>=1.0.2.1)", "zstd"]
+
+[[package]]
+name = "clickhouse-pool"
+version = "0.6.0"
+description = "a thread-safe connection pool for ClickHouse"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "clickhouse_pool-0.6.0-py3-none-any.whl", hash = "sha256:4e14aee4236a02789d4af752690c3f4430d1a6ae4188ae0df127de5814152ee3"},
+    {file = "clickhouse_pool-0.6.0.tar.gz", hash = "sha256:68d785ff8275fc5a47f36b014f56764fdd222716af798a8f91bee56585749a3c"},
+]
+
+[package.dependencies]
+clickhouse-driver = "0.2.7"
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -211,18 +347,18 @@ async = ["httpx (>=0.23.0,<0.24.0)"]
 
 [[package]]
 name = "fastapi"
-version = "0.115.2"
+version = "0.115.3"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fastapi-0.115.2-py3-none-any.whl", hash = "sha256:61704c71286579cc5a598763905928f24ee98bfcc07aabe84cfefb98812bbc86"},
-    {file = "fastapi-0.115.2.tar.gz", hash = "sha256:3995739e0b09fa12f984bce8fa9ae197b35d433750d3d312422d846e283697ee"},
+    {file = "fastapi-0.115.3-py3-none-any.whl", hash = "sha256:8035e8f9a2b0aa89cea03b6c77721178ed5358e1aea4cd8570d9466895c0638c"},
+    {file = "fastapi-0.115.3.tar.gz", hash = "sha256:c091c6a35599c036d676fa24bd4a6e19fa30058d93d950216cdc672881f6f7db"},
 ]
 
 [package.dependencies]
 pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0 || >2.0.0,<2.0.1 || >2.0.1,<2.1.0 || >2.1.0,<3.0.0"
-starlette = ">=0.37.2,<0.41.0"
+starlette = ">=0.40.0,<0.42.0"
 typing-extensions = ">=4.8.0"
 
 [package.extras]
@@ -385,6 +521,26 @@ files = [
 [package.dependencies]
 prometheus-client = ">=0.8.0,<1.0.0"
 starlette = ">=0.30.0,<1.0.0"
+
+[[package]]
+name = "protobuf"
+version = "5.28.3"
+description = ""
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "protobuf-5.28.3-cp310-abi3-win32.whl", hash = "sha256:0c4eec6f987338617072592b97943fdbe30d019c56126493111cf24344c1cc24"},
+    {file = "protobuf-5.28.3-cp310-abi3-win_amd64.whl", hash = "sha256:91fba8f445723fcf400fdbe9ca796b19d3b1242cd873907979b9ed71e4afe868"},
+    {file = "protobuf-5.28.3-cp38-abi3-macosx_10_9_universal2.whl", hash = "sha256:a3f6857551e53ce35e60b403b8a27b0295f7d6eb63d10484f12bc6879c715687"},
+    {file = "protobuf-5.28.3-cp38-abi3-manylinux2014_aarch64.whl", hash = "sha256:3fa2de6b8b29d12c61911505d893afe7320ce7ccba4df913e2971461fa36d584"},
+    {file = "protobuf-5.28.3-cp38-abi3-manylinux2014_x86_64.whl", hash = "sha256:712319fbdddb46f21abb66cd33cb9e491a5763b2febd8f228251add221981135"},
+    {file = "protobuf-5.28.3-cp38-cp38-win32.whl", hash = "sha256:3e6101d095dfd119513cde7259aa703d16c6bbdfae2554dfe5cfdbe94e32d548"},
+    {file = "protobuf-5.28.3-cp38-cp38-win_amd64.whl", hash = "sha256:27b246b3723692bf1068d5734ddaf2fccc2cdd6e0c9b47fe099244d80200593b"},
+    {file = "protobuf-5.28.3-cp39-cp39-win32.whl", hash = "sha256:135658402f71bbd49500322c0f736145731b16fc79dc8f367ab544a17eab4535"},
+    {file = "protobuf-5.28.3-cp39-cp39-win_amd64.whl", hash = "sha256:70585a70fc2dd4818c51287ceef5bdba6387f88a578c86d47bb34669b5552c36"},
+    {file = "protobuf-5.28.3-py3-none-any.whl", hash = "sha256:cee1757663fa32a1ee673434fcf3bf24dd54763c79690201208bafec62f19eed"},
+    {file = "protobuf-5.28.3.tar.gz", hash = "sha256:64badbc49180a5e401f373f9ce7ab1d18b63f7dd4a9cdc43c92b9f0b481cef7b"},
+]
 
 [[package]]
 name = "psycopg2-binary"
@@ -587,6 +743,17 @@ files = [
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
+name = "pytz"
+version = "2024.2"
+description = "World timezone definitions, modern and historical"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pytz-2024.2-py2.py3-none-any.whl", hash = "sha256:31c7c1817eb7fae7ca4b8c7ee50c72f93aa2dd863de768e1ef4245d426aa0725"},
+    {file = "pytz-2024.2.tar.gz", hash = "sha256:2aa355083c50a0f93fa581709deac0c9ad65cca8a9e9beac660adcbd493c798a"},
+]
+
+[[package]]
 name = "redis"
 version = "5.1.1"
 description = "Python client for Redis database and key-value store"
@@ -638,13 +805,13 @@ files = [
 
 [[package]]
 name = "starlette"
-version = "0.40.0"
+version = "0.41.0"
 description = "The little ASGI library that shines."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "starlette-0.40.0-py3-none-any.whl", hash = "sha256:c494a22fae73805376ea6bf88439783ecfba9aac88a43911b48c653437e784c4"},
-    {file = "starlette-0.40.0.tar.gz", hash = "sha256:1a3139688fb298ce5e2d661d37046a66ad996ce94be4d4983be019a23a04ea35"},
+    {file = "starlette-0.41.0-py3-none-any.whl", hash = "sha256:a0193a3c413ebc9c78bff1c3546a45bb8c8bcb4a84cae8747d650a65bd37210a"},
+    {file = "starlette-0.41.0.tar.gz", hash = "sha256:39cbd8768b107d68bfe1ff1672b38a2c38b49777de46d2a592841d58e3bf7c2a"},
 ]
 
 [package.dependencies]
@@ -663,6 +830,34 @@ files = [
     {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
     {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
 ]
+
+[[package]]
+name = "tzdata"
+version = "2024.2"
+description = "Provider of IANA time zone data"
+optional = false
+python-versions = ">=2"
+files = [
+    {file = "tzdata-2024.2-py2.py3-none-any.whl", hash = "sha256:a48093786cdcde33cad18c2555e8532f34422074448fbc874186f0abd79565cd"},
+    {file = "tzdata-2024.2.tar.gz", hash = "sha256:7d85cc416e9382e69095b7bdf4afd9e3880418a2413feec7069d533d6b4e31cc"},
+]
+
+[[package]]
+name = "tzlocal"
+version = "5.2"
+description = "tzinfo object for the local timezone"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "tzlocal-5.2-py3-none-any.whl", hash = "sha256:49816ef2fe65ea8ac19d19aa7a1ae0551c834303d5014c6d5a62e4cbda8047b8"},
+    {file = "tzlocal-5.2.tar.gz", hash = "sha256:8d399205578f1a9342816409cc1e46a93ebd5755e39ea2d85334bea911bf0e6e"},
+]
+
+[package.dependencies]
+tzdata = {version = "*", markers = "platform_system == \"Windows\""}
+
+[package.extras]
+devenv = ["check-manifest", "pytest (>=4.3)", "pytest-cov", "pytest-mock (>=3.3)", "zest.releaser"]
 
 [[package]]
 name = "urllib3"
@@ -712,4 +907,4 @@ standard = ["colorama (>=0.4)", "httptools (>=0.5.0)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "61a6fafd9d2ed98e4354146ae4da86f0e7d98be18b38e48abe3d397ae6b5a3ea"
+content-hash = "f51e7721059d3b25adb9875de8c19f28364b1d8ee6e9bc3698f03c15a4a6fbda"
