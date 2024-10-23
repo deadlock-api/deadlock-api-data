@@ -46,6 +46,11 @@ def get_health():
     return {"status": "ok"}
 
 
+@app.head("/health", include_in_schema=False)
+def get_health():
+    return {"status": "ok"}
+
+
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
 def get_robots() -> str:
     return "User-Agent: *\nDisallow: /\nAllow: /docs\nAllow: /\n"
