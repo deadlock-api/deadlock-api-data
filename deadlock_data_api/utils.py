@@ -8,7 +8,7 @@ import requests
 from cachetools.func import ttl_cache
 from discord_webhook import DiscordWebhook
 from fastapi import HTTPException, Security
-from fastapi.openapi.models import APIKey
+from fastapi.openapi.models import APIKey, APIKeyIn
 from fastapi.security.api_key import APIKeyBase
 from google.protobuf.message import Message
 from starlette.requests import Request
