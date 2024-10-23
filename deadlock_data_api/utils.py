@@ -8,8 +8,10 @@ import requests
 from cachetools.func import ttl_cache
 from discord_webhook import DiscordWebhook
 from fastapi import HTTPException, Security
-from fastapi.security import APIKeyQuery
+from fastapi.openapi.models import APIKey
+from fastapi.security.api_key import APIKeyBase
 from google.protobuf.message import Message
+from starlette.requests import Request
 from starlette.status import HTTP_403_FORBIDDEN
 
 from deadlock_data_api.globs import postgres_conn
@@ -67,7 +69,43 @@ def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
     return response_type.FromString(data)
 
 
-api_key_query = APIKeyQuery(name="api_key", auto_error=True)
+class APIKeyHeaderOrQuery(APIKeyBase):
+    def __init__(
+        self,
+        *,
+        query_name: str,
+        header_name: str,
+        scheme_name: str | None = None,
+        description: str | None = None,
+        auto_error: bool = True,
+    ):
+        self.query_model: APIKey = APIKey(
+            **{"in": APIKeyIn.query},  # type: ignore[arg-type]
+            name=query_name,
+            description=description,
+        )
+        self.header_model: APIKey = APIKey(
+            **{"in": APIKeyIn.query},  # type: ignore[arg-type]
+            name=header_name,
+            description=description,
+        )
+        self.scheme_name = scheme_name or self.__class__.__name__
+        self.auto_error = auto_error
+
+    async def __call__(self, request: Request) -> str | None:
+        query_api_key = request.query_params.get(self.query_model.name)
+        header_api_key = request.headers.get(self.header_model.name)
+        if not query_api_key and not header_api_key:
+            if self.auto_error:
+                raise HTTPException(
+                    status_code=HTTP_403_FORBIDDEN, detail="Not authenticated"
+                )
+            else:
+                return None
+        return query_api_key or header_api_key
+
+
+api_key_param = APIKeyHeaderOrQuery(query_name="api_key", header_name="X-API-Key")
 
 
 @ttl_cache(maxsize=1024, ttl=60)
@@ -81,13 +119,13 @@ def is_valid_api_key(api_key: str, data_access: bool = False) -> bool:
         return cursor.fetchone() is not None
 
 
-async def get_api_key(api_key: str = Security(api_key_query)):
+async def get_api_key(api_key: str = Security(api_key_param)):
     if not is_valid_api_key(api_key):
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return api_key
 
 
-async def get_data_api_key(api_key: str = Security(api_key_query)):
+async def get_data_api_key(api_key: str = Security(api_key_param)):
     try:
         if not is_valid_api_key(api_key, True):
             raise HTTPException(status_code=HTTP_403_FORBIDDEN)
