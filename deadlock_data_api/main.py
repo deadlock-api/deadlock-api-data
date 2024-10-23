@@ -47,7 +47,7 @@ def get_health():
 
 
 @app.head("/health", include_in_schema=False)
-def get_health():
+def head_health():
     return {"status": "ok"}
 
 
