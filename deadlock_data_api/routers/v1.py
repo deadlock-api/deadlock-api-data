@@ -5,24 +5,15 @@ from time import sleep
 from typing import Literal
 
 from cachetools.func import ttl_cache
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.openapi.models import APIKey
+from fastapi import APIRouter, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 
-from deadlock_data_api import utils
-from deadlock_data_api.globs import CH_POOL
 from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_data_api.models.build import Build
-from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
-from deadlock_data_api.utils import call_steam_proxy, send_webhook_message
-from protos.citadel_gcmessages_client_pb2 import (
-    CMsgClientToGCGetMatchHistory,
-    CMsgClientToGCGetMatchHistoryResponse,
-    k_EMsgClientToGCGetMatchHistory,
-)
+from deadlock_data_api.utils import send_webhook_message
 
 CACHE_AGE_ACTIVE_MATCHES = 20
 CACHE_AGE_BUILDS = 30 * 60
@@ -122,39 +113,6 @@ def get_active_matches(
         for a in load_active_matches()
         if account_id is None or has_player(a, account_id)
     ]
-
-
-@router.get(
-    "/players/{account_id}/match-history",
-    response_model_exclude_none=True,
-    summary="Rate Limit 1req/5min",
-    tags=["API-Key required"],
-)
-def player_match_history(
-    req: Request,
-    res: Response,
-    account_id: int,
-    api_key: APIKey = Depends(utils.get_api_key),
-) -> list[PlayerMatchHistoryEntry]:
-    LOGGER.info("player_match_history")
-    print(f"Authenticated with {api_key}")
-    limiter.apply_limits(
-        req,
-        res,
-        "/v1/players/{account_id}/match-history",
-        [RateLimit(limit=1, period=300)],
-    )
-    res.headers["Cache-Control"] = "public, max-age=1800"
-    msg = CMsgClientToGCGetMatchHistory()
-    msg.account_id = account_id
-    msg = call_steam_proxy(
-        k_EMsgClientToGCGetMatchHistory, msg, CMsgClientToGCGetMatchHistoryResponse
-    )
-    match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
-    match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
-    with CH_POOL.get_client() as client:
-        PlayerMatchHistoryEntry.store_clickhouse(client, account_id, match_history)
-    return match_history
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
