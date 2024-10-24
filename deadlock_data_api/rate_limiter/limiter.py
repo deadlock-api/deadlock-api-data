@@ -32,11 +32,10 @@ def apply_limits(
     limits = []
     prefix = ip
     if api_key:
+        prefix = api_key
         limits = (
             get_extra_api_key_limits(api_key, request.url.path) or key_default_limits
         )
-        if limits:
-            prefix = api_key
     if not limits:
         limits = ip_limits
     status = [limit_by_key(f"{prefix}:{key}", l) for l in limits]
