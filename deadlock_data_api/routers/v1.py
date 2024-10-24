@@ -131,10 +131,10 @@ def get_active_matches(
 @router.get(
     "/players/{account_id}/rank",
     response_model_exclude_none=True,
-    summary="Rate Limit 10req/10s",
+    summary="Rate Limit 20req/10s",
     tags=["API-Key required"],
 )
-def player_match_history(
+def player_rank(
     req: Request,
     res: Response,
     account_id: int,
@@ -146,14 +146,14 @@ def player_match_history(
         req,
         res,
         "/v1/players/{account_id}/rank",
-        [RateLimit(limit=10, period=10)],
+        [RateLimit(limit=20, period=10)],
     )
-    res.headers["Cache-Control"] = "public, max-age=1800"
-    return get_player_match_history(account_id)
+    res.headers["Cache-Control"] = "public, max-age=900"
+    return get_player_rank(account_id)
 
 
-@ttl_cache(ttl=1800)
-def get_player_match_history(account_id) -> PlayerCard:
+@ttl_cache(ttl=900)
+def get_player_rank(account_id: int) -> PlayerCard:
     msg = CMsgClientToGCGetProfileCard()
     msg.account_id = account_id
     msg = call_steam_proxy(k_EMsgClientToGCGetProfileCard, msg, CMsgCitadelProfileCard)
@@ -166,7 +166,7 @@ def get_player_match_history(account_id) -> PlayerCard:
 @router.get(
     "/players/{account_id}/match-history",
     response_model_exclude_none=True,
-    summary="Rate Limit 10req/10s",
+    summary="Rate Limit 20req/10s",
     tags=["API-Key required"],
 )
 def player_match_history(
@@ -181,9 +181,14 @@ def player_match_history(
         req,
         res,
         "/v1/players/{account_id}/match-history",
-        [RateLimit(limit=10, period=10)],
+        [RateLimit(limit=20, period=10)],
     )
-    res.headers["Cache-Control"] = "public, max-age=1800"
+    res.headers["Cache-Control"] = "public, max-age=900"
+    return get_player_match_history(account_id)
+
+
+@ttl_cache(ttl=900)
+def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
     msg = CMsgClientToGCGetMatchHistory()
     msg.account_id = account_id
     msg = call_steam_proxy(
