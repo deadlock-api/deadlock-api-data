@@ -46,6 +46,8 @@ k_EMsgClientToGCGetOldHeroBuildData: EGCCitadelClientMessages
 k_EMsgClientToGCGetOldHeroBuildDataResponse: EGCCitadelClientMessages
 k_EMsgClientToGCGetProfileCard: EGCCitadelClientMessages
 k_EMsgClientToGCGetProfileCardResponse: EGCCitadelClientMessages
+k_EMsgClientToGCGetRankedIntervalStats: EGCCitadelClientMessages
+k_EMsgClientToGCGetRankedIntervalStatsResponse: EGCCitadelClientMessages
 k_EMsgClientToGCGrantForumAccess: EGCCitadelClientMessages
 k_EMsgClientToGCGrantForumAccessResponse: EGCCitadelClientMessages
 k_EMsgClientToGCIsInMatchmaking: EGCCitadelClientMessages
@@ -83,8 +85,6 @@ k_EMsgClientToGCReportPlayerFromMatch: EGCCitadelClientMessages
 k_EMsgClientToGCReportPlayerFromMatchResponse: EGCCitadelClientMessages
 k_EMsgClientToGCSetNewPlayerProgress: EGCCitadelClientMessages
 k_EMsgClientToGCSetNewPlayerProgressResponse: EGCCitadelClientMessages
-k_EMsgClientToGCSetRankedSchedule: EGCCitadelClientMessages
-k_EMsgClientToGCSetRankedScheduleResponse: EGCCitadelClientMessages
 k_EMsgClientToGCSetServerConVar: EGCCitadelClientMessages
 k_EMsgClientToGCSetServerConVarResponse: EGCCitadelClientMessages
 k_EMsgClientToGCSpectateLobby: EGCCitadelClientMessages
@@ -114,6 +114,7 @@ k_EMsgGCToClientCanRejoinParty: EGCCitadelClientMessages
 k_EMsgGCToClientCommendNotification: EGCCitadelClientMessages
 k_EMsgGCToClientDevAnnouncements: EGCCitadelClientMessages
 k_EMsgGCToClientDevPlaytestStatus: EGCCitadelClientMessages
+k_EMsgGCToClientHeroLabsSchedule: EGCCitadelClientMessages
 k_EMsgGCToClientMatchmakingStopped: EGCCitadelClientMessages
 k_EMsgGCToClientPartyEvent: EGCCitadelClientMessages
 k_EMsgGCToClientProfileCardUpdated: EGCCitadelClientMessages
@@ -139,6 +140,7 @@ k_eEditRoster: ECitadelClientAccountEvent
 k_eEnteredMatchMaking: ECitadelClientAccountEvent
 k_eEnteredPartyMatchMaking: ECitadelClientAccountEvent
 k_eFriendly: ECommendType
+k_eGeneric: ECommendType
 k_eInvalid: ECommendType
 k_eJoinedPartyCode: ECitadelClientAccountEvent
 k_eLaunchedClient: ECitadelClientAccountEvent
@@ -336,20 +338,17 @@ class CMsgClientToGCBookUnlockResponse(_message.Message):
     ) -> None: ...
 
 class CMsgClientToGCCommendPlayerFromMatch(_message.Message):
-    __slots__ = ["commend_type", "commender_hero_id", "match_id", "target_account_id"]
-    COMMENDER_HERO_ID_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ["commend_type", "match_id", "target_account_id"]
     COMMEND_TYPE_FIELD_NUMBER: _ClassVar[int]
     MATCH_ID_FIELD_NUMBER: _ClassVar[int]
     TARGET_ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
     commend_type: ECommendType
-    commender_hero_id: int
     match_id: int
     target_account_id: int
     def __init__(
         self,
         match_id: _Optional[int] = ...,
         target_account_id: _Optional[int] = ...,
-        commender_hero_id: _Optional[int] = ...,
         commend_type: _Optional[_Union[ECommendType, str]] = ...,
     ) -> None: ...
 
@@ -1095,6 +1094,76 @@ class CMsgClientToGCGetProfileCard(_message.Message):
         friend_access_hint: bool = ...,
     ) -> None: ...
 
+class CMsgClientToGCGetRankedIntervalStats(_message.Message):
+    __slots__ = ["account_id", "target_interval_id"]
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    TARGET_INTERVAL_ID_FIELD_NUMBER: _ClassVar[int]
+    account_id: int
+    target_interval_id: int
+    def __init__(
+        self, account_id: _Optional[int] = ..., target_interval_id: _Optional[int] = ...
+    ) -> None: ...
+
+class CMsgClientToGCGetRankedIntervalStatsResponse(_message.Message):
+    __slots__ = ["intervals", "result"]
+
+    class EResponse(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = []
+
+    class RankedInterval(_message.Message):
+        __slots__ = [
+            "badge_level",
+            "end_time",
+            "interval_id",
+            "matches_played",
+            "start_time",
+        ]
+        BADGE_LEVEL_FIELD_NUMBER: _ClassVar[int]
+        END_TIME_FIELD_NUMBER: _ClassVar[int]
+        INTERVAL_ID_FIELD_NUMBER: _ClassVar[int]
+        MATCHES_PLAYED_FIELD_NUMBER: _ClassVar[int]
+        START_TIME_FIELD_NUMBER: _ClassVar[int]
+        badge_level: int
+        end_time: int
+        interval_id: int
+        matches_played: int
+        start_time: int
+        def __init__(
+            self,
+            interval_id: _Optional[int] = ...,
+            matches_played: _Optional[int] = ...,
+            badge_level: _Optional[int] = ...,
+            start_time: _Optional[int] = ...,
+            end_time: _Optional[int] = ...,
+        ) -> None: ...
+
+    INTERVALS_FIELD_NUMBER: _ClassVar[int]
+    RESULT_FIELD_NUMBER: _ClassVar[int]
+    intervals: _containers.RepeatedCompositeFieldContainer[
+        CMsgClientToGCGetRankedIntervalStatsResponse.RankedInterval
+    ]
+    k_eDisabled: CMsgClientToGCGetRankedIntervalStatsResponse.EResponse
+    k_eInternalError: CMsgClientToGCGetRankedIntervalStatsResponse.EResponse
+    k_eInvalidPermission: CMsgClientToGCGetRankedIntervalStatsResponse.EResponse
+    k_eRateLimited: CMsgClientToGCGetRankedIntervalStatsResponse.EResponse
+    k_eSuccess: CMsgClientToGCGetRankedIntervalStatsResponse.EResponse
+    k_eTooBusy: CMsgClientToGCGetRankedIntervalStatsResponse.EResponse
+    result: CMsgClientToGCGetRankedIntervalStatsResponse.EResponse
+    def __init__(
+        self,
+        result: _Optional[
+            _Union[CMsgClientToGCGetRankedIntervalStatsResponse.EResponse, str]
+        ] = ...,
+        intervals: _Optional[
+            _Iterable[
+                _Union[
+                    CMsgClientToGCGetRankedIntervalStatsResponse.RankedInterval,
+                    _Mapping,
+                ]
+            ]
+        ] = ...,
+    ) -> None: ...
+
 class CMsgClientToGCGrantForumAccess(_message.Message):
     __slots__ = ["email"]
     EMAIL_FIELD_NUMBER: _ClassVar[int]
@@ -1565,12 +1634,16 @@ class CMsgClientToGCPartySetModeResponse(_message.Message):
     k_eCannotChangeWhileReady: CMsgClientToGCPartySetModeResponse.EResponse
     k_eDisabled: CMsgClientToGCPartySetModeResponse.EResponse
     k_eFiveStacksNotAllowed: CMsgClientToGCPartySetModeResponse.EResponse
+    k_eHeroLabsMMNotOpen: CMsgClientToGCPartySetModeResponse.EResponse
+    k_eHeroLabsNotUnlocked: CMsgClientToGCPartySetModeResponse.EResponse
     k_eInMatch: CMsgClientToGCPartySetModeResponse.EResponse
     k_eInMatchMaking: CMsgClientToGCPartySetModeResponse.EResponse
     k_eInternalError: CMsgClientToGCPartySetModeResponse.EResponse
     k_eInvalidPartyID: CMsgClientToGCPartySetModeResponse.EResponse
     k_eInvalidPermissions: CMsgClientToGCPartySetModeResponse.EResponse
     k_eInvalidValue: CMsgClientToGCPartySetModeResponse.EResponse
+    k_eNoHeroLabsWhileInLowPri: CMsgClientToGCPartySetModeResponse.EResponse
+    k_eNoHighRangeFiveStack: CMsgClientToGCPartySetModeResponse.EResponse
     k_ePlayerBanned: CMsgClientToGCPartySetModeResponse.EResponse
     k_ePlayerPermanentBanned: CMsgClientToGCPartySetModeResponse.EResponse
     k_eRankedMMNotOpen: CMsgClientToGCPartySetModeResponse.EResponse
@@ -1654,6 +1727,8 @@ class CMsgClientToGCPartyStartMatchResponse(_message.Message):
     account_id: int
     k_eCannotSelectRegion: CMsgClientToGCPartyStartMatchResponse.EResponse
     k_eDisabled: CMsgClientToGCPartyStartMatchResponse.EResponse
+    k_eHeroLabsMMNotOpen: CMsgClientToGCPartyStartMatchResponse.EResponse
+    k_eHeroLabsNotUnlocked: CMsgClientToGCPartyStartMatchResponse.EResponse
     k_eInMatch: CMsgClientToGCPartyStartMatchResponse.EResponse
     k_eInMatchmaking: CMsgClientToGCPartyStartMatchResponse.EResponse
     k_eInternalError: CMsgClientToGCPartyStartMatchResponse.EResponse
@@ -1665,6 +1740,7 @@ class CMsgClientToGCPartyStartMatchResponse(_message.Message):
     k_eInvalidTeam: CMsgClientToGCPartyStartMatchResponse.EResponse
     k_eInvalidVersion: CMsgClientToGCPartyStartMatchResponse.EResponse
     k_eMismatchedVersions: CMsgClientToGCPartyStartMatchResponse.EResponse
+    k_eNoHeroLabsWhileInLowPri: CMsgClientToGCPartyStartMatchResponse.EResponse
     k_eNotAllPlayersAvailable: CMsgClientToGCPartyStartMatchResponse.EResponse
     k_ePlayerBannedFromMode: CMsgClientToGCPartyStartMatchResponse.EResponse
     k_ePlayersNotReady: CMsgClientToGCPartyStartMatchResponse.EResponse
@@ -1843,40 +1919,6 @@ class CMsgClientToGCSetNewPlayerProgressResponse(_message.Message):
     SUCCESS_FIELD_NUMBER: _ClassVar[int]
     success: bool
     def __init__(self, success: bool = ...) -> None: ...
-
-class CMsgClientToGCSetRankedSchedule(_message.Message):
-    __slots__ = ["region_mode", "schedule"]
-    REGION_MODE_FIELD_NUMBER: _ClassVar[int]
-    SCHEDULE_FIELD_NUMBER: _ClassVar[int]
-    region_mode: _citadel_gcmessages_common_pb2.ECitadelRegionMode
-    schedule: int
-    def __init__(
-        self,
-        region_mode: _Optional[
-            _Union[_citadel_gcmessages_common_pb2.ECitadelRegionMode, str]
-        ] = ...,
-        schedule: _Optional[int] = ...,
-    ) -> None: ...
-
-class CMsgClientToGCSetRankedScheduleResponse(_message.Message):
-    __slots__ = ["result"]
-
-    class EResult(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-        __slots__ = []
-
-    RESULT_FIELD_NUMBER: _ClassVar[int]
-    k_eInCooldown: CMsgClientToGCSetRankedScheduleResponse.EResult
-    k_eInternalError: CMsgClientToGCSetRankedScheduleResponse.EResult
-    k_eInvalidValue: CMsgClientToGCSetRankedScheduleResponse.EResult
-    k_eRankedNotUnlocked: CMsgClientToGCSetRankedScheduleResponse.EResult
-    k_eSuccess: CMsgClientToGCSetRankedScheduleResponse.EResult
-    result: CMsgClientToGCSetRankedScheduleResponse.EResult
-    def __init__(
-        self,
-        result: _Optional[
-            _Union[CMsgClientToGCSetRankedScheduleResponse.EResult, str]
-        ] = ...,
-    ) -> None: ...
 
 class CMsgClientToGCSetServerConVar(_message.Message):
     __slots__ = ["convar_name", "convar_value", "lobby_id"]
@@ -2061,6 +2103,8 @@ class CMsgClientToGCStartMatchmakingResponse(_message.Message):
     debug_message: str
     k_EResult_AlreadyFindingMatch: CMsgClientToGCStartMatchmakingResponse.EResultCode
     k_EResult_DurationControlBlocked: CMsgClientToGCStartMatchmakingResponse.EResultCode
+    k_EResult_HeroLabsMMNotOpen: CMsgClientToGCStartMatchmakingResponse.EResultCode
+    k_EResult_HeroLabsNotUnlocked: CMsgClientToGCStartMatchmakingResponse.EResultCode
     k_EResult_HeroesNotUnlocked: CMsgClientToGCStartMatchmakingResponse.EResultCode
     k_EResult_InParty: CMsgClientToGCStartMatchmakingResponse.EResultCode
     k_EResult_InternalError: CMsgClientToGCStartMatchmakingResponse.EResultCode
@@ -2070,6 +2114,9 @@ class CMsgClientToGCStartMatchmakingResponse(_message.Message):
     k_EResult_MatchmakingTooBusy: CMsgClientToGCStartMatchmakingResponse.EResultCode
     k_EResult_ModeBanned: CMsgClientToGCStartMatchmakingResponse.EResultCode
     k_EResult_ModeLocked: CMsgClientToGCStartMatchmakingResponse.EResultCode
+    k_EResult_NoHeroLabsWhileInLowPri: (
+        CMsgClientToGCStartMatchmakingResponse.EResultCode
+    )
     k_EResult_NoRankedWhileCommsBanned: (
         CMsgClientToGCStartMatchmakingResponse.EResultCode
     )
@@ -2343,6 +2390,7 @@ class CMsgClientWelcomeCitadel(_message.Message):
 
 class CMsgDevMatchInfo(_message.Message):
     __slots__ = [
+        "compat_version",
         "duration_s",
         "game_mode",
         "lobby_id",
@@ -2355,6 +2403,7 @@ class CMsgDevMatchInfo(_message.Message):
         "objectives_mask_team1",
         "open_spectator_slots",
         "players",
+        "ranked_badge_level",
         "region_mode",
         "spectators",
         "start_time",
@@ -2381,6 +2430,7 @@ class CMsgDevMatchInfo(_message.Message):
             hero_id: _Optional[int] = ...,
         ) -> None: ...
 
+    COMPAT_VERSION_FIELD_NUMBER: _ClassVar[int]
     DURATION_S_FIELD_NUMBER: _ClassVar[int]
     GAME_MODE_FIELD_NUMBER: _ClassVar[int]
     LOBBY_ID_FIELD_NUMBER: _ClassVar[int]
@@ -2393,10 +2443,12 @@ class CMsgDevMatchInfo(_message.Message):
     OBJECTIVES_MASK_TEAM1_FIELD_NUMBER: _ClassVar[int]
     OPEN_SPECTATOR_SLOTS_FIELD_NUMBER: _ClassVar[int]
     PLAYERS_FIELD_NUMBER: _ClassVar[int]
+    RANKED_BADGE_LEVEL_FIELD_NUMBER: _ClassVar[int]
     REGION_MODE_FIELD_NUMBER: _ClassVar[int]
     SPECTATORS_FIELD_NUMBER: _ClassVar[int]
     START_TIME_FIELD_NUMBER: _ClassVar[int]
     WINNING_TEAM_FIELD_NUMBER: _ClassVar[int]
+    compat_version: int
     duration_s: int
     game_mode: _citadel_gcmessages_common_pb2.ECitadelGameMode
     lobby_id: int
@@ -2409,6 +2461,7 @@ class CMsgDevMatchInfo(_message.Message):
     objectives_mask_team1: int
     open_spectator_slots: int
     players: _containers.RepeatedCompositeFieldContainer[CMsgDevMatchInfo.MatchPlayer]
+    ranked_badge_level: int
     region_mode: _citadel_gcmessages_common_pb2.ECitadelRegionMode
     spectators: int
     start_time: int
@@ -2441,6 +2494,8 @@ class CMsgDevMatchInfo(_message.Message):
         region_mode: _Optional[
             _Union[_citadel_gcmessages_common_pb2.ECitadelRegionMode, str]
         ] = ...,
+        compat_version: _Optional[int] = ...,
+        ranked_badge_level: _Optional[int] = ...,
     ) -> None: ...
 
 class CMsgGCToClientBookUpdated(_message.Message):
@@ -2618,6 +2673,65 @@ class CMsgGCToClientDevPlaytestStatus(_message.Message):
         ] = ...,
     ) -> None: ...
 
+class CMsgGCToClientHeroLabsSchedule(_message.Message):
+    __slots__ = ["schedules"]
+
+    class Schedule(_message.Message):
+        __slots__ = ["is_open", "regions", "schedule_id", "weekdays", "weekends"]
+        IS_OPEN_FIELD_NUMBER: _ClassVar[int]
+        REGIONS_FIELD_NUMBER: _ClassVar[int]
+        SCHEDULE_ID_FIELD_NUMBER: _ClassVar[int]
+        WEEKDAYS_FIELD_NUMBER: _ClassVar[int]
+        WEEKENDS_FIELD_NUMBER: _ClassVar[int]
+        is_open: bool
+        regions: _containers.RepeatedScalarFieldContainer[
+            _citadel_gcmessages_common_pb2.ECitadelRegionMode
+        ]
+        schedule_id: int
+        weekdays: _containers.RepeatedCompositeFieldContainer[
+            CMsgGCToClientHeroLabsSchedule.TimeRange
+        ]
+        weekends: _containers.RepeatedCompositeFieldContainer[
+            CMsgGCToClientHeroLabsSchedule.TimeRange
+        ]
+        def __init__(
+            self,
+            schedule_id: _Optional[int] = ...,
+            weekends: _Optional[
+                _Iterable[_Union[CMsgGCToClientHeroLabsSchedule.TimeRange, _Mapping]]
+            ] = ...,
+            weekdays: _Optional[
+                _Iterable[_Union[CMsgGCToClientHeroLabsSchedule.TimeRange, _Mapping]]
+            ] = ...,
+            is_open: bool = ...,
+            regions: _Optional[
+                _Iterable[
+                    _Union[_citadel_gcmessages_common_pb2.ECitadelRegionMode, str]
+                ]
+            ] = ...,
+        ) -> None: ...
+
+    class TimeRange(_message.Message):
+        __slots__ = ["end_time", "start_time"]
+        END_TIME_FIELD_NUMBER: _ClassVar[int]
+        START_TIME_FIELD_NUMBER: _ClassVar[int]
+        end_time: int
+        start_time: int
+        def __init__(
+            self, start_time: _Optional[int] = ..., end_time: _Optional[int] = ...
+        ) -> None: ...
+
+    SCHEDULES_FIELD_NUMBER: _ClassVar[int]
+    schedules: _containers.RepeatedCompositeFieldContainer[
+        CMsgGCToClientHeroLabsSchedule.Schedule
+    ]
+    def __init__(
+        self,
+        schedules: _Optional[
+            _Iterable[_Union[CMsgGCToClientHeroLabsSchedule.Schedule, _Mapping]]
+        ] = ...,
+    ) -> None: ...
+
 class CMsgGCToClientMatchmakingStopped(_message.Message):
     __slots__ = ["reason"]
 
@@ -2694,16 +2808,12 @@ class CMsgGCToClientRankedSchedule(_message.Message):
     ]
 
     class Schedule(_message.Message):
-        __slots__ = ["is_open", "regions", "schedule_id", "weekdays", "weekends"]
+        __slots__ = ["is_open", "schedule_id", "weekdays", "weekends"]
         IS_OPEN_FIELD_NUMBER: _ClassVar[int]
-        REGIONS_FIELD_NUMBER: _ClassVar[int]
         SCHEDULE_ID_FIELD_NUMBER: _ClassVar[int]
         WEEKDAYS_FIELD_NUMBER: _ClassVar[int]
         WEEKENDS_FIELD_NUMBER: _ClassVar[int]
         is_open: bool
-        regions: _containers.RepeatedScalarFieldContainer[
-            _citadel_gcmessages_common_pb2.ECitadelRegionMode
-        ]
         schedule_id: int
         weekdays: _containers.RepeatedCompositeFieldContainer[
             CMsgGCToClientRankedSchedule.TimeRange
@@ -2721,11 +2831,6 @@ class CMsgGCToClientRankedSchedule(_message.Message):
                 _Iterable[_Union[CMsgGCToClientRankedSchedule.TimeRange, _Mapping]]
             ] = ...,
             is_open: bool = ...,
-            regions: _Optional[
-                _Iterable[
-                    _Union[_citadel_gcmessages_common_pb2.ECitadelRegionMode, str]
-                ]
-            ] = ...,
         ) -> None: ...
 
     class TimeRange(_message.Message):
@@ -2975,6 +3080,7 @@ class CSOGameAccountClient(_message.Message):
         "account_id",
         "comms_ban_until",
         "flags",
+        "hero_labs_matches_since_test_hero",
         "hero_unlock_credits",
         "kills",
         "losses",
@@ -2983,13 +3089,10 @@ class CSOGameAccountClient(_message.Message):
         "most_played_hero_id",
         "new_player_progress",
         "permissions",
-        "ranked_badge_detail",
         "ranked_badge_interval",
         "ranked_badge_level",
         "ranked_interval",
         "ranked_matches",
-        "ranked_schedule",
-        "ranked_schedule_time",
         "report_ban_until",
         "wins",
     ]
@@ -3000,6 +3103,7 @@ class CSOGameAccountClient(_message.Message):
     ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
     COMMS_BAN_UNTIL_FIELD_NUMBER: _ClassVar[int]
     FLAGS_FIELD_NUMBER: _ClassVar[int]
+    HERO_LABS_MATCHES_SINCE_TEST_HERO_FIELD_NUMBER: _ClassVar[int]
     HERO_UNLOCK_CREDITS_FIELD_NUMBER: _ClassVar[int]
     KILLS_FIELD_NUMBER: _ClassVar[int]
     LOSSES_FIELD_NUMBER: _ClassVar[int]
@@ -3008,18 +3112,16 @@ class CSOGameAccountClient(_message.Message):
     MOST_PLAYED_HERO_ID_FIELD_NUMBER: _ClassVar[int]
     NEW_PLAYER_PROGRESS_FIELD_NUMBER: _ClassVar[int]
     PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
-    RANKED_BADGE_DETAIL_FIELD_NUMBER: _ClassVar[int]
     RANKED_BADGE_INTERVAL_FIELD_NUMBER: _ClassVar[int]
     RANKED_BADGE_LEVEL_FIELD_NUMBER: _ClassVar[int]
     RANKED_INTERVAL_FIELD_NUMBER: _ClassVar[int]
     RANKED_MATCHES_FIELD_NUMBER: _ClassVar[int]
-    RANKED_SCHEDULE_FIELD_NUMBER: _ClassVar[int]
-    RANKED_SCHEDULE_TIME_FIELD_NUMBER: _ClassVar[int]
     REPORT_BAN_UNTIL_FIELD_NUMBER: _ClassVar[int]
     WINS_FIELD_NUMBER: _ClassVar[int]
     account_id: int
     comms_ban_until: int
     flags: int
+    hero_labs_matches_since_test_hero: int
     hero_unlock_credits: int
     k_eAccountBanned: CSOGameAccountClient.EFlags
     k_eClaimedDiscordLink: CSOGameAccountClient.EFlags
@@ -3034,13 +3136,10 @@ class CSOGameAccountClient(_message.Message):
     most_played_hero_id: int
     new_player_progress: int
     permissions: int
-    ranked_badge_detail: int
     ranked_badge_interval: int
     ranked_badge_level: int
     ranked_interval: int
     ranked_matches: int
-    ranked_schedule: int
-    ranked_schedule_time: int
     report_ban_until: int
     wins: int
     def __init__(
@@ -3059,12 +3158,10 @@ class CSOGameAccountClient(_message.Message):
         low_priority_games_remaining: _Optional[int] = ...,
         report_ban_until: _Optional[int] = ...,
         ranked_badge_level: _Optional[int] = ...,
-        ranked_badge_detail: _Optional[int] = ...,
         ranked_badge_interval: _Optional[int] = ...,
         ranked_matches: _Optional[int] = ...,
         ranked_interval: _Optional[int] = ...,
-        ranked_schedule: _Optional[int] = ...,
-        ranked_schedule_time: _Optional[int] = ...,
+        hero_labs_matches_since_test_hero: _Optional[int] = ...,
     ) -> None: ...
 
 class EGCCitadelClientMessages(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):

@@ -26,6 +26,7 @@ k_ECitadelLobbyTeam_Spectator: ECitadelLobbyTeam
 k_ECitadelLobbyTeam_Team0: ECitadelLobbyTeam
 k_ECitadelLobbyTeam_Team1: ECitadelLobbyTeam
 k_ECitadelMatchMode_CoopBot: ECitadelMatchMode
+k_ECitadelMatchMode_HeroLabs: ECitadelMatchMode
 k_ECitadelMatchMode_Invalid: ECitadelMatchMode
 k_ECitadelMatchMode_PrivateLobby: ECitadelMatchMode
 k_ECitadelMatchMode_Ranked: ECitadelMatchMode
@@ -864,7 +865,6 @@ class CMsgMatchMetaDataContents(_message.Message):
             "party",
             "pings",
             "player_slot",
-            "ranked_badge_detail",
             "ranked_badge_level",
             "stats",
             "stats_type_stat",
@@ -889,7 +889,6 @@ class CMsgMatchMetaDataContents(_message.Message):
         PARTY_FIELD_NUMBER: _ClassVar[int]
         PINGS_FIELD_NUMBER: _ClassVar[int]
         PLAYER_SLOT_FIELD_NUMBER: _ClassVar[int]
-        RANKED_BADGE_DETAIL_FIELD_NUMBER: _ClassVar[int]
         RANKED_BADGE_LEVEL_FIELD_NUMBER: _ClassVar[int]
         STATS_FIELD_NUMBER: _ClassVar[int]
         STATS_TYPE_STAT_FIELD_NUMBER: _ClassVar[int]
@@ -923,7 +922,6 @@ class CMsgMatchMetaDataContents(_message.Message):
             CMsgMatchMetaDataContents.Ping
         ]
         player_slot: int
-        ranked_badge_detail: int
         ranked_badge_level: int
         stats: _containers.RepeatedCompositeFieldContainer[
             CMsgMatchMetaDataContents.PlayerStats
@@ -967,7 +965,6 @@ class CMsgMatchMetaDataContents(_message.Message):
             ] = ...,
             abandon_match_time_s: _Optional[int] = ...,
             ranked_badge_level: _Optional[int] = ...,
-            ranked_badge_detail: _Optional[int] = ...,
         ) -> None: ...
 
     class Position(_message.Message):
@@ -1225,6 +1222,7 @@ class CSOCitadelLobby(_message.Message):
         "lobby_id",
         "match_id",
         "match_mode",
+        "match_punishes_abandons",
         "safe_to_abandon",
         "sdr_address",
         "server_state",
@@ -1239,6 +1237,7 @@ class CSOCitadelLobby(_message.Message):
     LOBBY_ID_FIELD_NUMBER: _ClassVar[int]
     MATCH_ID_FIELD_NUMBER: _ClassVar[int]
     MATCH_MODE_FIELD_NUMBER: _ClassVar[int]
+    MATCH_PUNISHES_ABANDONS_FIELD_NUMBER: _ClassVar[int]
     SAFE_TO_ABANDON_FIELD_NUMBER: _ClassVar[int]
     SDR_ADDRESS_FIELD_NUMBER: _ClassVar[int]
     SERVER_STATE_FIELD_NUMBER: _ClassVar[int]
@@ -1254,6 +1253,7 @@ class CSOCitadelLobby(_message.Message):
     lobby_id: int
     match_id: int
     match_mode: ECitadelMatchMode
+    match_punishes_abandons: bool
     safe_to_abandon: bool
     sdr_address: bytes
     server_state: ELobbyServerState
@@ -1278,6 +1278,7 @@ class CSOCitadelLobby(_message.Message):
         sdr_address: _Optional[bytes] = ...,
         server_version: _Optional[int] = ...,
         safe_to_abandon: bool = ...,
+        match_punishes_abandons: bool = ...,
     ) -> None: ...
 
 class CSOCitadelParty(_message.Message):
