@@ -26,7 +26,9 @@ def apply_limits(
     api_key = request.headers.get("X-API-Key", request.query_params.get("api_key"))
     api_key = (
         api_key.lstrip("HEXE-")
-        if api_key is not None and utils.is_valid_uuid(api_key.lstrip("HEXE-"))
+        if api_key is not None
+        and utils.is_valid_uuid(api_key.lstrip("HEXE-"))
+        and utils.is_valid_api_key(api_key.lstrip("HEXE-"))
         else None
     )
     limits = []
