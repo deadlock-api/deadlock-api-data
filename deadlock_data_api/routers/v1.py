@@ -14,14 +14,18 @@ from deadlock_data_api import utils
 from deadlock_data_api.globs import CH_POOL
 from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_data_api.models.build import Build
+from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.utils import call_steam_proxy, send_webhook_message
 from protos.citadel_gcmessages_client_pb2 import (
+    CMsgCitadelProfileCard,
     CMsgClientToGCGetMatchHistory,
     CMsgClientToGCGetMatchHistoryResponse,
+    CMsgClientToGCGetProfileCard,
     k_EMsgClientToGCGetMatchHistory,
+    k_EMsgClientToGCGetProfileCard,
 )
 
 CACHE_AGE_ACTIVE_MATCHES = 20
@@ -122,6 +126,36 @@ def get_active_matches(
         for a in load_active_matches()
         if account_id is None or has_player(a, account_id)
     ]
+
+
+@router.get(
+    "/players/{account_id}/rank",
+    response_model_exclude_none=True,
+    summary="Rate Limit 1req/1min",
+    tags=["API-Key required"],
+)
+def player_match_history(
+    req: Request,
+    res: Response,
+    account_id: int,
+    api_key: APIKey = Depends(utils.get_api_key),
+) -> PlayerCard:
+    LOGGER.info("player_rank")
+    print(f"Authenticated with {api_key}")
+    limiter.apply_limits(
+        req,
+        res,
+        "/v1/players/{account_id}/rank",
+        [RateLimit(limit=1, period=60)],
+    )
+    res.headers["Cache-Control"] = "public, max-age=1800"
+    msg = CMsgClientToGCGetProfileCard()
+    msg.account_id = account_id
+    msg = call_steam_proxy(k_EMsgClientToGCGetProfileCard, msg, CMsgCitadelProfileCard)
+    player_card = PlayerCard.from_msg(msg)
+    with CH_POOL.get_client() as client:
+        player_card.store_clickhouse(client, account_id)
+    return player_card
 
 
 @router.get(
