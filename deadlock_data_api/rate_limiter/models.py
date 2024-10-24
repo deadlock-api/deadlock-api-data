@@ -45,7 +45,7 @@ class RateLimitStatus(BaseModel):
                 status_code=429,
                 detail={
                     "error": "rate_limit_exceeded",
-                    "message": "Rate limit exceeded",
+                    "message": "Rate limit exceeded, please check the headers for more information.",
                 },
                 headers=self.headers,
             )
