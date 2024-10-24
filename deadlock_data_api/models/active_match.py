@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ActiveMatchPlayer(BaseModel):
@@ -28,6 +28,8 @@ class ActiveMatch(BaseModel):
     game_mode: int
     match_score: int
     region_mode: int
+    compat_version: int | None = Field(None)
+    ranked_badge_level: int | None = Field(None)
 
 
 class APIActiveMatch(BaseModel):
