@@ -113,7 +113,7 @@ def is_valid_api_key(api_key: str, data_access: bool = False) -> bool:
     api_key = api_key.lstrip("HEXE-")
     with postgres_conn().cursor() as cursor:
         cursor.execute(
-            "SELECT 1 FROM api_keys WHERE key = %s AND (data_access OR NOT %s)",
+            "SELECT 1 FROM api_keys WHERE key = %s AND disabled IS FALSE AND (data_access OR NOT %s)",
             (str(api_key), data_access),
         )
         return cursor.fetchone() is not None
