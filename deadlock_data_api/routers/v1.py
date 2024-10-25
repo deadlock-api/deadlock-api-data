@@ -129,7 +129,7 @@ def get_active_matches(
 @router.get(
     "/players/{account_id}/rank",
     response_model_exclude_none=True,
-    summary="Rate Limit 10req/min, API-Key RateLimit: 60req/10s",
+    summary="Rate Limit 10req/min, API-Key RateLimit: 60req/min",
 )
 def player_rank(
     req: Request,
@@ -142,7 +142,7 @@ def player_rank(
         res,
         "/v1/players/{account_id}/rank",
         [RateLimit(limit=10, period=60)],
-        [RateLimit(limit=60, period=10)],
+        [RateLimit(limit=60, period=60)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     return get_player_rank(account_id)
@@ -162,7 +162,7 @@ def get_player_rank(account_id: int) -> PlayerCard:
 @router.get(
     "/players/{account_id}/match-history",
     response_model_exclude_none=True,
-    summary="Rate Limit 10req/min, API-Key RateLimit: 60req/10s",
+    summary="Rate Limit 10req/min, API-Key RateLimit: 60req/min",
 )
 def player_match_history(
     req: Request,
@@ -175,7 +175,7 @@ def player_match_history(
         res,
         "/v1/players/{account_id}/rank",
         [RateLimit(limit=10, period=60)],
-        [RateLimit(limit=60, period=10)],
+        [RateLimit(limit=60, period=60)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     return get_player_match_history(account_id)
