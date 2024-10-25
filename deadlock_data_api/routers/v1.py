@@ -5,12 +5,10 @@ from time import sleep
 from typing import Literal
 
 from cachetools.func import ttl_cache
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.openapi.models import APIKey
+from fastapi import APIRouter, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 
-from deadlock_data_api import utils
 from deadlock_data_api.globs import CH_POOL
 from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_data_api.models.build import Build
@@ -131,22 +129,20 @@ def get_active_matches(
 @router.get(
     "/players/{account_id}/rank",
     response_model_exclude_none=True,
-    summary="Rate Limit 20req/10s",
-    tags=["API-Key required"],
+    summary="Rate Limit 10req/min, API-Key RateLimit: 60req/10s",
 )
 def player_rank(
     req: Request,
     res: Response,
     account_id: int,
-    api_key: APIKey = Depends(utils.get_api_key),
 ) -> PlayerCard:
     LOGGER.info("player_rank")
-    print(f"Authenticated with {api_key}")
     limiter.apply_limits(
         req,
         res,
         "/v1/players/{account_id}/rank",
-        [RateLimit(limit=20, period=10)],
+        [RateLimit(limit=10, period=60)],
+        [RateLimit(limit=60, period=10)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     return get_player_rank(account_id)
@@ -166,22 +162,20 @@ def get_player_rank(account_id: int) -> PlayerCard:
 @router.get(
     "/players/{account_id}/match-history",
     response_model_exclude_none=True,
-    summary="Rate Limit 20req/10s",
-    tags=["API-Key required"],
+    summary="Rate Limit 10req/min, API-Key RateLimit: 60req/10s",
 )
 def player_match_history(
     req: Request,
     res: Response,
     account_id: int,
-    api_key: APIKey = Depends(utils.get_api_key),
 ) -> list[PlayerMatchHistoryEntry]:
     LOGGER.info("player_match_history")
-    print(f"Authenticated with {api_key}")
     limiter.apply_limits(
         req,
         res,
-        "/v1/players/{account_id}/match-history",
-        [RateLimit(limit=20, period=10)],
+        "/v1/players/{account_id}/rank",
+        [RateLimit(limit=10, period=60)],
+        [RateLimit(limit=60, period=10)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     return get_player_match_history(account_id)
