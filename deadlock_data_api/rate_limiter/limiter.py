@@ -85,8 +85,8 @@ def limit_by_key(key: str, rate_limit: RateLimit) -> RateLimitStatus:
     filtered_times = sorted([t for t in times if t > current_time - rate_limit.period])
     assert len(times) == len(filtered_times)
     current_count = len(filtered_times)
-    if current_count > rate_limit.limit:
-        redis_conn().zrem(key, current_time)
+    # if current_count > rate_limit.limit:
+    #     redis_conn().zrem(key, current_time)
     return RateLimitStatus(
         key=key,
         count=current_count,
