@@ -1,5 +1,3 @@
-import math
-
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
@@ -37,7 +35,7 @@ class ActiveMatch(BaseModel):
     @property
     def ranked_rank(self) -> int | None:
         return (
-            math.floor(self.ranked_badge_level / 10)
+            self.ranked_badge_level // 10
             if self.ranked_badge_level is not None
             else None
         )

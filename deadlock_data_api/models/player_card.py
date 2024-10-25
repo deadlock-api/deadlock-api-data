@@ -1,5 +1,3 @@
-import math
-
 from citadel_gcmessages_client_pb2 import CMsgCitadelProfileCard
 from clickhouse_driver import Client
 from pydantic import BaseModel, ConfigDict, computed_field
@@ -70,7 +68,7 @@ class PlayerCard(BaseModel):
     @property
     def ranked_rank(self) -> int | None:
         return (
-            math.floor(self.ranked_badge_level / 10)
+            self.ranked_badge_level // 10
             if self.ranked_badge_level is not None
             else None
         )
@@ -93,19 +91,6 @@ class PlayerCard(BaseModel):
         )
 
     def store_clickhouse(self, client: Client, account_id: int):
-        print(
-            [
-                (
-                    slot.slot_id or 0,
-                    slot.hero.hero_id or 0,
-                    slot.hero.hero_kills or 0,
-                    slot.hero.hero_wins or 0,
-                    slot.stat.stat_id or 0,
-                    slot.stat.stat_score or 0,
-                )
-                for slot in self.slots
-            ]
-        )
         client.execute(
             f"INSERT INTO player_card (* EXCEPT(created_at)) VALUES",
             [
