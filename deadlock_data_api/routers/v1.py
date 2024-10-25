@@ -129,7 +129,7 @@ def get_active_matches(
 @router.get(
     "/players/{account_id}/rank",
     response_model_exclude_none=True,
-    summary="Rate Limit 10/h, API-Key RateLimit: 60req/min & 1000/h",
+    summary="Rate Limit 10/h, API-Key RateLimit: 60req/min & 1000/h, Ask for an increase if needed",
 )
 def player_rank(
     req: Request,
