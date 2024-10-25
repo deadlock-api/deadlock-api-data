@@ -53,7 +53,7 @@ def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
         "messageType": msg_type,
         "timeoutMillis": 10_000,
         "rateLimit": {
-            "messagePeriodMillis": 2_000,
+            "messagePeriodMillis": 10,
         },
         "limitBufferingBehavior": "too_many_requests",
         "data": msg_data,
