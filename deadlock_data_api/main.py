@@ -11,6 +11,17 @@ from deadlock_data_api.routers import base, v1
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
 
+if "SENTRY_DSN" in os.environ:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=os.environ["SENTRY_DSN"],
+        traces_sample_rate=1.0,
+        _experiments={
+            "continuous_profiling_auto_start": True,
+        },
+    )
+
 app = FastAPI(
     title="Data - Deadlock API",
     description="""
