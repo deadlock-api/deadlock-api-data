@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field
+import math
+
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class ActiveMatchPlayer(BaseModel):
@@ -30,6 +32,20 @@ class ActiveMatch(BaseModel):
     region_mode: int
     compat_version: int | None = Field(None)
     ranked_badge_level: int | None = Field(None)
+
+    @computed_field
+    @property
+    def ranked_rank(self) -> int | None:
+        return (
+            math.floor(self.ranked_badge_level / 10)
+            if self.ranked_badge_level
+            else None
+        )
+
+    @computed_field
+    @property
+    def ranked_subrank(self) -> int | None:
+        return self.ranked_badge_level % 10 if self.ranked_badge_level else None
 
 
 class APIActiveMatch(BaseModel):

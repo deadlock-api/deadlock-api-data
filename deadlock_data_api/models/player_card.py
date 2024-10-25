@@ -1,6 +1,8 @@
+import math
+
 from citadel_gcmessages_client_pb2 import CMsgCitadelProfileCard
 from clickhouse_driver import Client
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class PlayerCardSlotHero(BaseModel):
@@ -63,6 +65,20 @@ class PlayerCard(BaseModel):
     account_id: int
     ranked_badge_level: int
     slots: list[PlayerCardSlot]
+
+    @computed_field
+    @property
+    def ranked_rank(self) -> int | None:
+        return (
+            math.floor(self.ranked_badge_level / 10)
+            if self.ranked_badge_level
+            else None
+        )
+
+    @computed_field
+    @property
+    def ranked_subrank(self) -> int | None:
+        return self.ranked_badge_level % 10 if self.ranked_badge_level else None
 
     @classmethod
     def from_msg(cls, msg: CMsgCitadelProfileCard) -> "PlayerCard":
