@@ -174,7 +174,7 @@ def player_match_history(
     limiter.apply_limits(
         req,
         res,
-        "/v1/players/{account_id}/rank",
+        "/v1/players/{account_id}/match-history",
         [RateLimit(limit=10, period=3600)],
         [RateLimit(limit=60, period=60), RateLimit(limit=100, period=3600)],
         [RateLimit(limit=1200, period=60)],
