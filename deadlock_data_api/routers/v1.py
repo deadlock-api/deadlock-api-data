@@ -143,6 +143,7 @@ def player_rank(
         "/v1/players/{account_id}/rank",
         [RateLimit(limit=10, period=3600)],
         [RateLimit(limit=60, period=60), RateLimit(limit=100, period=3600)],
+        [RateLimit(limit=1200, period=60)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     return get_player_rank(account_id)
@@ -176,6 +177,7 @@ def player_match_history(
         "/v1/players/{account_id}/rank",
         [RateLimit(limit=10, period=3600)],
         [RateLimit(limit=60, period=60), RateLimit(limit=100, period=3600)],
+        [RateLimit(limit=1200, period=60)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     return get_player_match_history(account_id)

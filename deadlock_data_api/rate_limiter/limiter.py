@@ -21,6 +21,7 @@ def apply_limits(
     key: str,
     ip_limits: list[RateLimit],
     key_default_limits: list[RateLimit] | None = None,
+    global_limits: list[RateLimit] | None = None,
 ):
     ip = request.headers.get("CF-Connecting-IP", request.client.host)
     api_key = request.headers.get("X-API-Key", request.query_params.get("api_key"))
@@ -41,6 +42,8 @@ def apply_limits(
     if not limits:
         limits = ip_limits
     status = [limit_by_key(f"{prefix}:{key}", l) for l in limits]
+    if global_limits:
+        status += [limit_by_key(key, l) for l in global_limits]
     for s in status:
         LOGGER.info(
             f"count: {s.count}, "
