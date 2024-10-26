@@ -48,6 +48,11 @@ R = TypeVar("R", bound=Message)
 
 
 def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
+    data = call_steam_proxy_raw(msg_type, msg)
+    return response_type.FromString(data)
+
+
+def call_steam_proxy_raw(msg_type, msg):
     msg_data = b64encode(msg.SerializeToString()).decode("utf-8")
     body = {
         "messageType": msg_type,
@@ -65,8 +70,7 @@ def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
     )
     response.raise_for_status()
     data = response.json()["data"]
-    data = b64decode(data)
-    return response_type.FromString(data)
+    return b64decode(data)
 
 
 class APIKeyHeaderOrQuery(APIKeyBase):

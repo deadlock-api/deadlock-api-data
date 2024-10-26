@@ -4,6 +4,7 @@ import sqlite3
 from time import sleep
 from typing import Literal
 
+import snappy
 from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
 from starlette.requests import Request
@@ -16,12 +17,19 @@ from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
-from deadlock_data_api.utils import call_steam_proxy, send_webhook_message
+from deadlock_data_api.utils import (
+    call_steam_proxy,
+    call_steam_proxy_raw,
+    send_webhook_message,
+)
 from protos.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
+    CMsgClientToGCGetActiveMatches,
+    CMsgClientToGCGetActiveMatchesResponse,
     CMsgClientToGCGetMatchHistory,
     CMsgClientToGCGetMatchHistoryResponse,
     CMsgClientToGCGetProfileCard,
+    k_EMsgClientToGCGetActiveMatches,
     k_EMsgClientToGCGetMatchHistory,
     k_EMsgClientToGCGetProfileCard,
 )
@@ -121,7 +129,7 @@ def get_active_matches(
 
     return [
         a
-        for a in load_active_matches()
+        for a in fetch_active_matches()
         if account_id is None or has_player(a, account_id)
     ]
 
@@ -327,6 +335,20 @@ def load_build(build_id: int) -> Build:
     if result is None:
         raise HTTPException(status_code=404, detail="Build not found")
     return Build.model_validate_json(result[0])
+
+
+@ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
+def fetch_active_matches() -> list[ActiveMatch]:
+    LOGGER.debug("load_build")
+    msg = call_steam_proxy_raw(
+        k_EMsgClientToGCGetActiveMatches, CMsgClientToGCGetActiveMatches()
+    )
+    return [
+        ActiveMatch.from_msg(m)
+        for m in CMsgClientToGCGetActiveMatchesResponse.FromString(
+            snappy.decompress(msg[7:])
+        ).active_matches
+    ]
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES - 1)
