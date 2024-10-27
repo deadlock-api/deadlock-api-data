@@ -354,7 +354,7 @@ def fetch_active_matches() -> list[ActiveMatch]:
         return load_active_matches()
 
 
-@ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES - 1)
+@ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
 def load_active_matches() -> list[ActiveMatch]:
     LOGGER.debug("load_active_matches")
     last_exc = None
