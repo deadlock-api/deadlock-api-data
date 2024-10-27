@@ -339,16 +339,19 @@ def load_build(build_id: int) -> Build:
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
 def fetch_active_matches() -> list[ActiveMatch]:
-    LOGGER.debug("load_build")
-    msg = call_steam_proxy_raw(
-        k_EMsgClientToGCGetActiveMatches, CMsgClientToGCGetActiveMatches()
-    )
-    return [
-        ActiveMatch.from_msg(m)
-        for m in CMsgClientToGCGetActiveMatchesResponse.FromString(
-            snappy.decompress(msg[7:])
-        ).active_matches
-    ]
+    try:
+        LOGGER.debug("load_build")
+        msg = call_steam_proxy_raw(
+            k_EMsgClientToGCGetActiveMatches, CMsgClientToGCGetActiveMatches()
+        )
+        return [
+            ActiveMatch.from_msg(m)
+            for m in CMsgClientToGCGetActiveMatchesResponse.FromString(
+                snappy.decompress(msg[7:])
+            ).active_matches
+        ]
+    except Exception:
+        return load_active_matches()
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES - 1)
