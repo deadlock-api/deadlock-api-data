@@ -49,8 +49,8 @@ def get_builds(
     res: Response,
     start: int | None = None,
     limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
-    sort_direction: Literal["asc", "desc"] | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
+    sort_direction: Literal["asc", "desc"] = "desc",
 ) -> list[Build]:
     LOGGER.info("get_builds")
     limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=10, period=1)])
@@ -73,8 +73,8 @@ def get_builds_by_hero_id(
     hero_id: int,
     start: int | None = None,
     limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
-    sort_direction: Literal["asc", "desc"] | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
+    sort_direction: Literal["asc", "desc"] = "desc",
 ) -> list[Build]:
     LOGGER.info("get_builds_by_hero_id")
     limiter.apply_limits(
@@ -91,8 +91,8 @@ def get_builds_by_author_id(
     author_id: int,
     start: int | None = None,
     limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
-    sort_direction: Literal["asc", "desc"] | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
+    sort_direction: Literal["asc", "desc"] = "desc",
 ) -> list[Build]:
     LOGGER.info("get_builds_by_author_id")
     limiter.apply_limits(
@@ -209,8 +209,8 @@ def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
 def load_builds(
     start: int | None = None,
     limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
-    sort_direction: Literal["asc", "desc"] | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
+    sort_direction: Literal["asc", "desc"] = "desc",
 ) -> list[Build]:
     LOGGER.debug("load_builds")
     query = "SELECT json(data) as builds FROM hero_builds"
@@ -250,8 +250,10 @@ def load_builds_by_hero(
     hero_id: int,
     start: int | None = None,
     limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
-    sort_direction: Literal["asc", "desc"] | None = None,
+    sort_by: (
+        Literal["favorites", "ignores", "reports", "updated_at"] | None
+    ) = "favorites",
+    sort_direction: Literal["asc", "desc"] = "desc",
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_hero")
     query = "SELECT json(data) as builds FROM hero_builds WHERE hero = ?"
@@ -291,8 +293,8 @@ def load_builds_by_author(
     author_id: int,
     start: int | None = None,
     limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
-    sort_direction: Literal["asc", "desc"] | None = None,
+    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
+    sort_direction: Literal["asc", "desc"] = "desc",
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_author")
     query = "SELECT json(data) as builds FROM hero_builds WHERE author_id = ?"
