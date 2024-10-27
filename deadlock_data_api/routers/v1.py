@@ -48,7 +48,7 @@ def get_builds(
     req: Request,
     res: Response,
     start: int | None = None,
-    limit: int | None = None,
+    limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
@@ -72,7 +72,7 @@ def get_builds_by_hero_id(
     res: Response,
     hero_id: int,
     start: int | None = None,
-    limit: int | None = None,
+    limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
@@ -90,7 +90,7 @@ def get_builds_by_author_id(
     res: Response,
     author_id: int,
     start: int | None = None,
-    limit: int | None = None,
+    limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
@@ -208,7 +208,7 @@ def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_builds(
     start: int | None = None,
-    limit: int | None = None,
+    limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
@@ -234,8 +234,9 @@ def load_builds(
             raise HTTPException(
                 status_code=400, detail="Start cannot be provided without limit"
             )
-        query += " LIMIT ? OFFSET ?"
-        args += [limit, start]
+        if limit != -1:
+            query += " LIMIT ? OFFSET ?"
+            args += [limit, start]
 
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
@@ -248,7 +249,7 @@ def load_builds(
 def load_builds_by_hero(
     hero_id: int,
     start: int | None = None,
-    limit: int | None = None,
+    limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
@@ -274,8 +275,9 @@ def load_builds_by_hero(
             raise HTTPException(
                 status_code=400, detail="Start cannot be provided without limit"
             )
-        query += " LIMIT ? OFFSET ?"
-        args += [limit, start]
+        if limit != -1:
+            query += " LIMIT ? OFFSET ?"
+            args += [limit, start]
 
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
@@ -288,7 +290,7 @@ def load_builds_by_hero(
 def load_builds_by_author(
     author_id: int,
     start: int | None = None,
-    limit: int | None = None,
+    limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] | None = None,
     sort_direction: Literal["asc", "desc"] | None = None,
 ) -> list[Build]:
@@ -314,8 +316,9 @@ def load_builds_by_author(
             raise HTTPException(
                 status_code=400, detail="Start cannot be provided without limit"
             )
-        query += " LIMIT ? OFFSET ?"
-        args += [limit, start]
+        if limit != -1:
+            query += " LIMIT ? OFFSET ?"
+            args += [limit, start]
 
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
