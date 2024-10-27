@@ -150,7 +150,7 @@ def player_rank(
         res,
         "/v1/players/{account_id}/rank",
         [RateLimit(limit=10, period=3600)],
-        [RateLimit(limit=60, period=60), RateLimit(limit=1000, period=3600)],
+        [RateLimit(limit=100, period=60), RateLimit(limit=5000, period=3600)],
         [RateLimit(limit=1200, period=60)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
