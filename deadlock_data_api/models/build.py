@@ -5,7 +5,7 @@ class BuildHeroDetailsCategoryAbility(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     ability_id: int
-    annotation: str | None
+    annotation: str | None = Field(None)
 
     @field_validator("annotation")
     @classmethod
