@@ -241,7 +241,7 @@ def load_builds(
     cursor = conn.cursor()
     cursor.execute(query, tuple(args))
     results = cursor.fetchall()
-    return [Build.model_validate_json(result[0]) for result in results]
+    return [b for b in [Build.parse(result[0]) for result in results] if b]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
@@ -281,7 +281,7 @@ def load_builds_by_hero(
     cursor = conn.cursor()
     cursor.execute(query, tuple(args))
     results = cursor.fetchall()
-    return [Build.model_validate_json(result[0]) for result in results]
+    return [b for b in [Build.parse(result[0]) for result in results] if b]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
@@ -321,7 +321,7 @@ def load_builds_by_author(
     cursor = conn.cursor()
     cursor.execute(query, tuple(args))
     results = cursor.fetchall()
-    return [Build.model_validate_json(result[0]) for result in results]
+    return [b for b in [Build.parse(result[0]) for result in results] if b]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
@@ -334,7 +334,7 @@ def load_build(build_id: int) -> Build:
     result = cursor.fetchone()
     if result is None:
         raise HTTPException(status_code=404, detail="Build not found")
-    return Build.model_validate_json(result[0])
+    return Build.parse(result[0])
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)

@@ -85,3 +85,11 @@ class Build(BaseModel):
     num_ignores: int
     num_reports: int
     preference: BuildPreference | None = Field(None)
+
+    @classmethod
+    def parse(cls, json_str: str):
+        try:
+            return cls.model_validate_json(json_str)
+        except Exception as e:
+            print(f"Error parsing build: {e}")
+            return None
