@@ -31,7 +31,7 @@ class BuildHeroDetailsAbilityOrderCurrencyChange(BaseModel):
     ability_id: int
     currency_type: int
     delta: int
-    annotation: str | None
+    annotation: str | None = Field(None)
 
     @field_validator("annotation")
     @classmethod
