@@ -18,11 +18,11 @@ class BuildHeroDetailsCategoryAbility(BaseModel):
 class BuildHeroDetailsCategory(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    mods: list[BuildHeroDetailsCategoryAbility]
     name: str
-    description: str
-    width: float
-    height: float
+    width: float | None = Field(None)
+    height: float | None = Field(None)
+    description: str | None = Field(None)
+    mods: list[BuildHeroDetailsCategoryAbility] | None = Field(None)
 
 
 class BuildHeroDetailsAbilityOrderCurrencyChange(BaseModel):
@@ -44,7 +44,9 @@ class BuildHeroDetailsAbilityOrderCurrencyChange(BaseModel):
 class BuildHeroDetailsAbilityOrder(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    currency_changes: list[BuildHeroDetailsAbilityOrderCurrencyChange]
+    currency_changes: list[BuildHeroDetailsAbilityOrderCurrencyChange] | None = Field(
+        None
+    )
 
 
 class BuildHeroDetails(BaseModel):
@@ -62,7 +64,7 @@ class BuildHero(BaseModel):
     author_account_id: int
     last_updated_timestamp: int
     name: str
-    description: str
+    description: str | None = Field(None)
     language: int
     version: int
     origin_build_id: int
@@ -81,9 +83,9 @@ class Build(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     hero_build: BuildHero
-    num_favorites: int
-    num_ignores: int
-    num_reports: int
+    num_favorites: int = Field(0)
+    num_ignores: int = Field(0)
+    num_reports: int = Field(0)
     preference: BuildPreference | None = Field(None)
 
     @classmethod
