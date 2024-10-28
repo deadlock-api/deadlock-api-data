@@ -59,11 +59,17 @@ def get_builds(
 
 
 @router.get("/builds/{build_id}", response_model_exclude_none=True)
-def get_build(req: Request, res: Response, build_id: int) -> Build:
+def get_build(
+    req: Request, res: Response, build_id: int, version: int | None = None
+) -> Build:
     LOGGER.info("get_build")
     limiter.apply_limits(req, res, "/v1/builds/{id}", [RateLimit(limit=100, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_build(build_id)
+    return (
+        load_build(build_id)
+        if version is None
+        else load_build_version(build_id, version)
+    )
 
 
 @router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
@@ -334,8 +340,24 @@ def load_build(build_id: int) -> Build:
     LOGGER.debug("load_build")
     conn = sqlite3.connect("builds.db")
     cursor = conn.cursor()
-    query = "SELECT json(data) FROM hero_builds WHERE build_id = ?"
+    query = "SELECT json(data) FROM hero_builds WHERE build_id = ? ORDER BY version DESC LIMIT 1"
     cursor.execute(query, (build_id,))
+    result = cursor.fetchone()
+    if result is None:
+        raise HTTPException(status_code=404, detail="Build not found")
+    return Build.parse(result[0])
+
+
+@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
+def load_build_version(build_id: int, version: int) -> Build:
+    LOGGER.debug("load_build")
+    conn = sqlite3.connect("builds.db")
+    cursor = conn.cursor()
+    query = "SELECT json(data) FROM hero_builds WHERE build_id = ? AND version = ?"
+    cursor.execute(
+        query,
+        (build_id, version),
+    )
     result = cursor.fetchone()
     if result is None:
         raise HTTPException(status_code=404, detail="Build not found")
