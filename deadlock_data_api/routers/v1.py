@@ -51,11 +51,12 @@ def get_builds(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    only_latest: bool = False,
 ) -> list[Build]:
     LOGGER.info("get_builds")
     limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=10, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds(start, limit, sort_by, sort_direction)
+    return load_builds(start, limit, sort_by, sort_direction, only_latest)
 
 
 @router.get("/builds/{build_id}", response_model_exclude_none=True)
@@ -81,13 +82,16 @@ def get_builds_by_hero_id(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    only_latest: bool = False,
 ) -> list[Build]:
     LOGGER.info("get_builds_by_hero_id")
     limiter.apply_limits(
         req, res, "/v1/builds/by-hero-id/{hero_id}", [RateLimit(limit=100, period=1)]
     )
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_hero(hero_id, start, limit, sort_by, sort_direction)
+    return load_builds_by_hero(
+        hero_id, start, limit, sort_by, sort_direction, only_latest
+    )
 
 
 @router.get("/builds/by-author-id/{author_id}", response_model_exclude_none=True)
@@ -99,6 +103,7 @@ def get_builds_by_author_id(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    only_latest: bool = False,
 ) -> list[Build]:
     LOGGER.info("get_builds_by_author_id")
     limiter.apply_limits(
@@ -108,7 +113,9 @@ def get_builds_by_author_id(
         [RateLimit(limit=100, period=1)],
     )
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_author(author_id, start, limit, sort_by, sort_direction)
+    return load_builds_by_author(
+        author_id, start, limit, sort_by, sort_direction, only_latest
+    )
 
 
 @router.get(
@@ -217,10 +224,18 @@ def load_builds(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    only_latest: bool = False,
 ) -> list[Build]:
     LOGGER.debug("load_builds")
-    query = "SELECT json(data) as builds FROM hero_builds"
-    args = []
+    query = """
+    WITH latest_build_ids as (SELECT DISTINCT (build_id)
+                          FROM hero_builds
+                          ORDER BY version DESC)
+    SELECT json(data) as builds
+    FROM hero_builds
+    WHERE build_id IN (SELECT * FROM latest_build_ids) OR ? = 1
+    """
+    args = [int(only_latest)]
     if sort_by is not None:
         if sort_by == "favorites":
             query += " ORDER BY favorites"
@@ -260,10 +275,18 @@ def load_builds_by_hero(
         Literal["favorites", "ignores", "reports", "updated_at"] | None
     ) = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    only_latest: bool = False,
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_hero")
-    query = "SELECT json(data) as builds FROM hero_builds WHERE hero = ?"
-    args = [hero_id]
+    query = """
+    WITH latest_build_ids as (SELECT DISTINCT (build_id)
+                          FROM hero_builds
+                          ORDER BY version DESC)
+    SELECT json(data) as builds
+    FROM hero_builds
+    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR ? = 1) AND hero = ?
+    """
+    args = [int(only_latest), hero_id]
     if sort_by is not None:
         if sort_by == "favorites":
             query += " ORDER BY favorites"
@@ -301,10 +324,18 @@ def load_builds_by_author(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    only_latest: bool = False,
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_author")
-    query = "SELECT json(data) as builds FROM hero_builds WHERE author_id = ?"
-    args = [author_id]
+    query = """
+    WITH latest_build_ids as (SELECT DISTINCT (build_id)
+                          FROM hero_builds
+                          ORDER BY version DESC)
+    SELECT json(data) as builds
+    FROM hero_builds
+    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR ? = 1) AND author_id = ?
+    """
+    args = [int(only_latest), author_id]
     if sort_by is not None:
         if sort_by == "favorites":
             query += " ORDER BY favorites"
