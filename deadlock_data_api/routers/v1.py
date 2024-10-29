@@ -51,8 +51,9 @@ def get_builds(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
-    only_latest: bool = False,
+    only_latest: bool | None = None,
 ) -> list[Build]:
+    only_latest = only_latest or False
     LOGGER.info("get_builds")
     limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=10, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
@@ -82,8 +83,9 @@ def get_builds_by_hero_id(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
-    only_latest: bool = False,
+    only_latest: bool | None = None,
 ) -> list[Build]:
+    only_latest = only_latest or False
     LOGGER.info("get_builds_by_hero_id")
     limiter.apply_limits(
         req, res, "/v1/builds/by-hero-id/{hero_id}", [RateLimit(limit=100, period=1)]
@@ -103,8 +105,9 @@ def get_builds_by_author_id(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
-    only_latest: bool = False,
+    only_latest: bool | None = None,
 ) -> list[Build]:
+    only_latest = only_latest or False
     LOGGER.info("get_builds_by_author_id")
     limiter.apply_limits(
         req,
