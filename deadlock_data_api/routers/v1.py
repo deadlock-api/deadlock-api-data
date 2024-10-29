@@ -35,7 +35,7 @@ from protos.citadel_gcmessages_client_pb2 import (
 )
 
 CACHE_AGE_ACTIVE_MATCHES = 20
-CACHE_AGE_BUILDS = 30 * 60
+CACHE_AGE_BUILDS = 5 * 60
 LOAD_FILE_RETRIES = 5
 
 LOGGER = logging.getLogger(__name__)
