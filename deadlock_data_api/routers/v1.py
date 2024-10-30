@@ -4,7 +4,9 @@ import sqlite3
 from time import sleep
 from typing import Literal
 
+import requests
 import snappy
+import xmltodict
 from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
 from starlette.requests import Request
@@ -13,6 +15,7 @@ from starlette.responses import Response
 from deadlock_data_api.globs import CH_POOL
 from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_data_api.models.build import Build
+from deadlock_data_api.models.patch_note import PatchNote
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
 from deadlock_data_api.rate_limiter import limiter
@@ -41,6 +44,13 @@ LOAD_FILE_RETRIES = 5
 LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1")
+
+
+@router.get("/patch-notes")
+def get_patch_notes(res: Response):
+    LOGGER.info("get_patch_notes")
+    res.headers["Cache-Control"] = f"public, max-age={30 * 60}"
+    return fetch_patch_notes()
 
 
 @router.get("/builds", response_model_exclude_none=True)
@@ -431,3 +441,12 @@ def load_active_matches() -> list[ActiveMatch]:
         sleep(50)
     send_webhook_message(f"Error loading active matches: {str(last_exc)}")
     raise HTTPException(status_code=500, detail="Failed to load active matches")
+
+
+@ttl_cache(ttl=30 * 60)
+def fetch_patch_notes() -> list[PatchNote]:
+    LOGGER.debug("fetch_patch_notes")
+    rss_url = "https://forums.playdeadlock.com/forums/changelog.10/index.rss"
+    response = requests.get(rss_url)
+    items = xmltodict.parse(response.text)["rss"]["channel"]["item"]
+    return [PatchNote.model_validate(item) for item in items]

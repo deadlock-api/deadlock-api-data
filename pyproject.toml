@@ -21,8 +21,9 @@ psycopg2-binary = "^2.9.10"
 uuid = "^1.30"
 protobuf = "^5.28.3"
 clickhouse-pool = "^0.6.0"
-sentry-sdk = {version = "^2.17.0", extras = ["fastapi"]}
+sentry-sdk = { version = "^2.17.0", extras = ["fastapi"] }
 python-snappy = "^0.7.3"
+xmltodict = "^0.14.2"
 
 
 [build-system]
