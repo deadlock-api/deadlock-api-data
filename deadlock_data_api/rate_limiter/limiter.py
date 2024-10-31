@@ -41,7 +41,7 @@ def apply_limits(
         )
     if not limits:
         limits = ip_limits
-    status = [limit_by_key(f"{prefix}:{key}", l) for l in limits]
+    status = [limit_by_key(f"{prefix}:{key}:{l.period}", l) for l in limits]
     if global_limits:
         status += [limit_by_key(key, l) for l in global_limits]
     for s in status:
