@@ -1,6 +1,6 @@
+from datetime import datetime
 from email.utils import parsedate_to_datetime
 
-from black import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
