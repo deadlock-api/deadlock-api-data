@@ -1,6 +1,6 @@
-from citadel_gcmessages_client_pb2 import CMsgCitadelProfileCard
 from clickhouse_driver import Client
 from pydantic import BaseModel, ConfigDict, computed_field
+from valveprotos_py.citadel_gcmessages_client_pb2 import CMsgCitadelProfileCard
 
 
 class PlayerCardSlotHero(BaseModel):

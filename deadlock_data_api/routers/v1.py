@@ -11,6 +11,17 @@ from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
+from valveprotos_py.citadel_gcmessages_client_pb2 import (
+    CMsgCitadelProfileCard,
+    CMsgClientToGCGetActiveMatches,
+    CMsgClientToGCGetActiveMatchesResponse,
+    CMsgClientToGCGetMatchHistory,
+    CMsgClientToGCGetMatchHistoryResponse,
+    CMsgClientToGCGetProfileCard,
+    k_EMsgClientToGCGetActiveMatches,
+    k_EMsgClientToGCGetMatchHistory,
+    k_EMsgClientToGCGetProfileCard,
+)
 
 from deadlock_data_api.globs import CH_POOL
 from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
@@ -24,17 +35,6 @@ from deadlock_data_api.utils import (
     call_steam_proxy,
     call_steam_proxy_raw,
     send_webhook_message,
-)
-from protos.citadel_gcmessages_client_pb2 import (
-    CMsgCitadelProfileCard,
-    CMsgClientToGCGetActiveMatches,
-    CMsgClientToGCGetActiveMatchesResponse,
-    CMsgClientToGCGetMatchHistory,
-    CMsgClientToGCGetMatchHistoryResponse,
-    CMsgClientToGCGetProfileCard,
-    k_EMsgClientToGCGetActiveMatches,
-    k_EMsgClientToGCGetMatchHistory,
-    k_EMsgClientToGCGetProfileCard,
 )
 
 CACHE_AGE_ACTIVE_MATCHES = 20

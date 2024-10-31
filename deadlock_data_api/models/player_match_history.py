@@ -1,6 +1,8 @@
-from citadel_gcmessages_client_pb2 import CMsgClientToGCGetMatchHistoryResponse
 from clickhouse_driver import Client
 from pydantic import BaseModel, ConfigDict
+from valveprotos_py.citadel_gcmessages_client_pb2 import (
+    CMsgClientToGCGetMatchHistoryResponse,
+)
 
 
 class PlayerMatchHistoryEntry(BaseModel):

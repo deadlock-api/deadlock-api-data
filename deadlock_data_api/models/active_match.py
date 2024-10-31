@@ -1,5 +1,5 @@
-from citadel_gcmessages_client_pb2 import CMsgDevMatchInfo
 from pydantic import BaseModel, ConfigDict, Field, computed_field
+from valveprotos_py.citadel_gcmessages_client_pb2 import CMsgDevMatchInfo
 
 
 class ActiveMatchPlayer(BaseModel):
