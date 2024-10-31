@@ -41,7 +41,8 @@ def apply_limits(
         )
     if not limits:
         limits = ip_limits
-    status = [limit_by_key(f"{prefix}:{key}:{l.period}", l) for l in limits]
+    increment_key(f"{prefix}:{key}")
+    status = [limit_by_key(f"{prefix}:{key}", l) for l in limits]
     if global_limits:
         status += [limit_by_key(key, l) for l in global_limits]
     for s in status:
@@ -75,27 +76,28 @@ def get_extra_api_key_limits(api_key: str, path: str) -> list[RateLimit]:
         ]
 
 
-def limit_by_key(key: str, rate_limit: RateLimit) -> RateLimitStatus:
-    LOGGER.debug(f"Checking rate limit: {key=} {rate_limit=}")
+def increment_key(key: str):
     current_time = float(time.time())
     pipe = redis_conn().pipeline()
     pipe.zremrangebyscore(key, 0, current_time - MAX_TTL_SECONDS)
     pipe.zadd(key, {str(current_time): current_time})
-    pipe.zrange(key, current_time - rate_limit.period, current_time, byscore=True)
     pipe.expire(key, MAX_TTL_SECONDS)
-    result = pipe.execute()
-    times = list(map(float, result[2]))
-    filtered_times = sorted([t for t in times if t > current_time - rate_limit.period])
-    assert len(times) == len(filtered_times)
-    current_count = len(filtered_times)
-    # if current_count > rate_limit.limit:
-    #     redis_conn().zrem(key, current_time)
+    pipe.execute()
+
+
+def limit_by_key(key: str, rate_limit: RateLimit) -> RateLimitStatus:
+    LOGGER.debug(f"Checking rate limit: {key=} {rate_limit=}")
+    current_time = float(time.time())
+    result = redis_conn().zrange(
+        key, current_time - rate_limit.period, current_time, byscore=True
+    )
+    times = list(map(float, result))
     return RateLimitStatus(
         key=key,
-        count=current_count,
+        count=len(times),
         limit=rate_limit.limit,
         period=rate_limit.period,
-        oldest_request_time=filtered_times[0] if filtered_times else 0,
+        oldest_request_time=times[0] if times else 0,
     )
 
 
