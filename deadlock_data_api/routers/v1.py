@@ -1,6 +1,5 @@
 import logging
 import os
-import sqlite3
 from time import sleep
 from typing import Literal
 
@@ -23,7 +22,7 @@ from valveprotos_py.citadel_gcmessages_client_pb2 import (
     k_EMsgClientToGCGetProfileCard,
 )
 
-from deadlock_data_api.globs import CH_POOL
+from deadlock_data_api.globs import CH_POOL, postgres_conn
 from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.patch_note import PatchNote
@@ -241,12 +240,12 @@ def load_builds(
 ) -> list[Build]:
     LOGGER.debug("load_builds")
     query = """
-    WITH latest_build_ids as (SELECT DISTINCT (build_id)
+    WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
                           FROM hero_builds
                           ORDER BY version DESC)
-    SELECT json(data) as builds
+    SELECT data as builds
     FROM hero_builds
-    WHERE build_id IN (SELECT * FROM latest_build_ids) OR ? = 1
+    WHERE build_id IN (SELECT * FROM latest_build_ids) OR %s = 1
     """
     args = [int(only_latest)]
     if sort_by is not None:
@@ -269,14 +268,14 @@ def load_builds(
                 status_code=400, detail="Start cannot be provided without limit"
             )
         if limit != -1:
-            query += " LIMIT ? OFFSET ?"
+            query += " LIMIT %s OFFSET %s"
             args += [limit, start]
 
-    conn = sqlite3.connect("builds.db")
-    cursor = conn.cursor()
-    cursor.execute(query, tuple(args))
-    results = cursor.fetchall()
-    return [b for b in [Build.parse(result[0]) for result in results] if b]
+    conn = postgres_conn()
+    with conn.cursor() as cursor:
+        cursor.execute(query, tuple(args))
+        results = cursor.fetchall()
+    return [b for b in [Build.model_validate(result[0]) for result in results] if b]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
@@ -292,12 +291,12 @@ def load_builds_by_hero(
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_hero")
     query = """
-    WITH latest_build_ids as (SELECT DISTINCT (build_id)
+    WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
                           FROM hero_builds
                           ORDER BY version DESC)
-    SELECT json(data) as builds
+    SELECT data as builds
     FROM hero_builds
-    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR ? = 1) AND hero = ?
+    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND hero = %s
     """
     args = [int(only_latest), hero_id]
     if sort_by is not None:
@@ -320,14 +319,14 @@ def load_builds_by_hero(
                 status_code=400, detail="Start cannot be provided without limit"
             )
         if limit != -1:
-            query += " LIMIT ? OFFSET ?"
+            query += " LIMIT %s OFFSET %s"
             args += [limit, start]
 
-    conn = sqlite3.connect("builds.db")
-    cursor = conn.cursor()
-    cursor.execute(query, tuple(args))
-    results = cursor.fetchall()
-    return [b for b in [Build.parse(result[0]) for result in results] if b]
+    conn = postgres_conn()
+    with conn.cursor() as cursor:
+        cursor.execute(query, tuple(args))
+        results = cursor.fetchall()
+    return [b for b in [Build.model_validate(result[0]) for result in results] if b]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
@@ -341,12 +340,12 @@ def load_builds_by_author(
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_author")
     query = """
-    WITH latest_build_ids as (SELECT DISTINCT (build_id)
+    WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
                           FROM hero_builds
                           ORDER BY version DESC)
-    SELECT json(data) as builds
+    SELECT json_agg(data) as builds
     FROM hero_builds
-    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR ? = 1) AND author_id = ?
+    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND author_id = %s
     """
     args = [int(only_latest), author_id]
     if sort_by is not None:
@@ -369,43 +368,42 @@ def load_builds_by_author(
                 status_code=400, detail="Start cannot be provided without limit"
             )
         if limit != -1:
-            query += " LIMIT ? OFFSET ?"
+            query += " LIMIT %s OFFSET %s"
             args += [limit, start]
 
-    conn = sqlite3.connect("builds.db")
-    cursor = conn.cursor()
-    cursor.execute(query, tuple(args))
-    results = cursor.fetchall()
-    return [b for b in [Build.parse(result[0]) for result in results] if b]
+    conn = postgres_conn()
+    with conn.cursor() as cursor:
+        cursor.execute(query, tuple(args))
+        results = cursor.fetchall()
+    return [b for b in [Build.model_validate(result[0]) for result in results] if b]
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_build(build_id: int) -> Build:
     LOGGER.debug("load_build")
-    conn = sqlite3.connect("builds.db")
-    cursor = conn.cursor()
-    query = "SELECT json(data) FROM hero_builds WHERE build_id = ? ORDER BY version DESC LIMIT 1"
-    cursor.execute(query, (build_id,))
-    result = cursor.fetchone()
-    if result is None:
-        raise HTTPException(status_code=404, detail="Build not found")
-    return Build.parse(result[0])
+    query = (
+        "SELECT data FROM hero_builds WHERE build_id = %s ORDER BY version DESC LIMIT 1"
+    )
+    conn = postgres_conn()
+    with conn.cursor() as cursor:
+        cursor.execute(query, (build_id,))
+        result = cursor.fetchone()
+        if result is None:
+            raise HTTPException(status_code=404, detail="Build not found")
+        return Build.model_validate(result[0])
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_build_version(build_id: int, version: int) -> Build:
     LOGGER.debug("load_build")
-    conn = sqlite3.connect("builds.db")
-    cursor = conn.cursor()
-    query = "SELECT json(data) FROM hero_builds WHERE build_id = ? AND version = ?"
-    cursor.execute(
-        query,
-        (build_id, version),
-    )
-    result = cursor.fetchone()
-    if result is None:
-        raise HTTPException(status_code=404, detail="Build not found")
-    return Build.parse(result[0])
+    query = "SELECT data FROM hero_builds WHERE build_id = %s AND version = %s"
+    conn = postgres_conn()
+    with conn.cursor() as cursor:
+        cursor.execute(query, (build_id, version))
+        result = cursor.fetchone()
+        if result is None:
+            raise HTTPException(status_code=404, detail="Build not found")
+        return Build.model_validate(result[0])
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
