@@ -343,7 +343,7 @@ def load_builds_by_author(
     WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
                           FROM hero_builds
                           ORDER BY version DESC)
-    SELECT json_agg(data) as builds
+    SELECT data as builds
     FROM hero_builds
     WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND author_id = %s
     """
