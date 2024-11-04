@@ -140,7 +140,9 @@ async def get_data_api_key(api_key: str = Security(api_key_param)):
     return api_key
 
 
-def validate_steam_id(steam_id: int | str) -> int:
+def validate_steam_id(steam_id: int | str | None) -> int | None:
+    if steam_id is None:
+        return None
     try:
         steam_id = int(steam_id)
         if steam_id >= STEAM_ID_64_IDENT:
