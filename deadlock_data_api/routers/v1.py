@@ -22,6 +22,7 @@ from valveprotos_py.citadel_gcmessages_client_pb2 import (
     k_EMsgClientToGCGetProfileCard,
 )
 
+from deadlock_data_api import utils
 from deadlock_data_api.globs import CH_POOL, postgres_conn
 from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
 from deadlock_data_api.models.build import Build
@@ -145,6 +146,7 @@ def get_active_matches(
     last_modified = os.path.getmtime("active_matches.json")
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
     res.headers["Last-Updated"] = str(int(last_modified))
+    account_id = utils.validate_steam_id(account_id)
 
     def has_player(am: ActiveMatch, account_id: int) -> bool:
         for p in am.players:
@@ -179,6 +181,7 @@ def player_rank(
         [RateLimit(limit=1200, period=60)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
+    account_id = utils.validate_steam_id(account_id)
     return get_player_rank(account_id)
 
 

@@ -22,6 +22,7 @@ WEBHOOK_URL = "https://discord.com/api/webhooks/1286415194427363380/Bb5mGAqn1yic
 WEBHOOK = DiscordWebhook(url=WEBHOOK_URL)
 STEAM_PROXY_URL = os.environ.get("STEAM_PROXY_URL")
 STEAM_PROXY_API_TOKEN = os.environ.get("STEAM_PROXY_API_TOKEN")
+STEAM_ID_64_IDENT = 76561197960265728
 
 
 def send_webhook_message(message: str):
@@ -137,3 +138,17 @@ async def get_data_api_key(api_key: str = Security(api_key_param)):
         print(e)
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
     return api_key
+
+
+def validate_steam_id(steam_id: int | str) -> int:
+    try:
+        steam_id = int(steam_id)
+        if steam_id >= STEAM_ID_64_IDENT:
+            return steam_id - STEAM_ID_64_IDENT
+        return steam_id
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except TypeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
