@@ -236,7 +236,7 @@ def get_raw_metadata_file(
     limiter.apply_limits(
         req,
         res,
-        "/v1/matches/{match_id}/metadata",
+        "/v1/matches/{match_id}/raw_metadata",
         [RateLimit(limit=1, period=60), RateLimit(limit=100, period=3600)],
         [RateLimit(limit=10, period=60)],
         [RateLimit(limit=3, period=1)],
