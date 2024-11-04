@@ -1,45 +1,41 @@
 import logging
 import os
-from time import sleep
 from typing import Literal
 
 import requests
-import snappy
-import xmltodict
 from cachetools.func import ttl_cache
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import Response, StreamingResponse
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
-    CMsgClientToGCGetActiveMatches,
-    CMsgClientToGCGetActiveMatchesResponse,
-    CMsgClientToGCGetMatchHistory,
-    CMsgClientToGCGetMatchHistoryResponse,
     CMsgClientToGCGetProfileCard,
-    k_EMsgClientToGCGetActiveMatches,
-    k_EMsgClientToGCGetMatchHistory,
     k_EMsgClientToGCGetProfileCard,
 )
 
 from deadlock_data_api import utils
-from deadlock_data_api.globs import CH_POOL, postgres_conn
-from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
+from deadlock_data_api.globs import CH_POOL, s3_conn
+from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
-from deadlock_data_api.models.patch_note import PatchNote
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
-from deadlock_data_api.utils import (
-    call_steam_proxy,
-    call_steam_proxy_raw,
-    send_webhook_message,
+from deadlock_data_api.routers.v1_utils import (
+    fetch_active_matches,
+    fetch_patch_notes,
+    get_match_salts,
+    get_player_match_history,
+    load_build,
+    load_build_version,
+    load_builds,
+    load_builds_by_author,
+    load_builds_by_hero,
 )
+from deadlock_data_api.utils import call_steam_proxy
 
 CACHE_AGE_ACTIVE_MATCHES = 20
 CACHE_AGE_BUILDS = 5 * 60
-LOAD_FILE_RETRIES = 5
 
 LOGGER = logging.getLogger(__name__)
 
@@ -219,235 +215,57 @@ def player_match_history(
     return get_player_match_history(account_id)
 
 
-@ttl_cache(ttl=900)
-def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
-    msg = CMsgClientToGCGetMatchHistory()
-    msg.account_id = account_id
-    msg = call_steam_proxy(
-        k_EMsgClientToGCGetMatchHistory, msg, CMsgClientToGCGetMatchHistoryResponse
+@router.get(
+    "/matches/{match_id}/raw_metadata",
+    description="""
+# Raw Metadata
+
+This endpoints streams the raw .meta.bz2 file for the given `match_id`.
+
+You have to decompress it and decode the protobuf message.
+
+Protobuf definitions can be found here: [https://github.com/SteamDatabase/Protobufs](https://github.com/SteamDatabase/Protobufs)
+
+At the moment the rate limits are quite strict, as we are serving it from an s3 with egress costs, but that may change.
+    """,
+    summary="RateLimit: 1req/min & 100req/h, API-Key RateLimit: 10req/min",
+)
+def get_raw_metadata_file(
+    req: Request, res: Response, match_id: int
+) -> StreamingResponse:
+    limiter.apply_limits(
+        req,
+        res,
+        "/v1/matches/{match_id}/metadata",
+        [RateLimit(limit=1, period=60), RateLimit(limit=100, period=3600)],
+        [RateLimit(limit=10, period=60)],
+        [RateLimit(limit=3, period=1)],
     )
-    match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
-    match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
-    with CH_POOL.get_client() as client:
-        PlayerMatchHistoryEntry.store_clickhouse(client, account_id, match_history)
-    return match_history
-
-
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds(
-    start: int | None = None,
-    limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
-    sort_direction: Literal["asc", "desc"] = "desc",
-    only_latest: bool = False,
-) -> list[Build]:
-    LOGGER.debug("load_builds")
-    query = """
-    WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
-                          FROM hero_builds
-                          ORDER BY version DESC)
-    SELECT data as builds
-    FROM hero_builds
-    WHERE build_id IN (SELECT * FROM latest_build_ids) OR %s = 1
-    """
-    args = [int(only_latest)]
-    if sort_by is not None:
-        if sort_by == "favorites":
-            query += " ORDER BY favorites"
-        elif sort_by == "ignores":
-            query += " ORDER BY ignores"
-        elif sort_by == "reports":
-            query += " ORDER BY reports"
-        elif sort_by == "updated_at":
-            query += " ORDER BY updated_at"
-        if sort_direction is not None:
-            query += f" {sort_direction}"
-
-    if limit is not None or start is not None:
-        if start is None:
-            start = 0
-        if limit is None:
-            raise HTTPException(
-                status_code=400, detail="Start cannot be provided without limit"
-            )
-        if limit != -1:
-            query += " LIMIT %s OFFSET %s"
-            args += [limit, start]
-
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, tuple(args))
-        results = cursor.fetchall()
-    return [b for b in [Build.model_validate(result[0]) for result in results] if b]
-
-
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds_by_hero(
-    hero_id: int,
-    start: int | None = None,
-    limit: int | None = 100,
-    sort_by: (
-        Literal["favorites", "ignores", "reports", "updated_at"] | None
-    ) = "favorites",
-    sort_direction: Literal["asc", "desc"] = "desc",
-    only_latest: bool = False,
-) -> list[Build]:
-    LOGGER.debug("load_builds_by_hero")
-    query = """
-    WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
-                          FROM hero_builds
-                          ORDER BY version DESC)
-    SELECT data as builds
-    FROM hero_builds
-    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND hero = %s
-    """
-    args = [int(only_latest), hero_id]
-    if sort_by is not None:
-        if sort_by == "favorites":
-            query += " ORDER BY favorites"
-        elif sort_by == "ignores":
-            query += " ORDER BY ignores"
-        elif sort_by == "reports":
-            query += " ORDER BY reports"
-        elif sort_by == "updated_at":
-            query += " ORDER BY updated_at"
-        if sort_direction is not None:
-            query += f" {sort_direction}"
-
-    if limit is not None or start is not None:
-        if start is None:
-            start = 0
-        if limit is None:
-            raise HTTPException(
-                status_code=400, detail="Start cannot be provided without limit"
-            )
-        if limit != -1:
-            query += " LIMIT %s OFFSET %s"
-            args += [limit, start]
-
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, tuple(args))
-        results = cursor.fetchall()
-    return [b for b in [Build.model_validate(result[0]) for result in results] if b]
-
-
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds_by_author(
-    author_id: int,
-    start: int | None = None,
-    limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
-    sort_direction: Literal["asc", "desc"] = "desc",
-    only_latest: bool = False,
-) -> list[Build]:
-    LOGGER.debug("load_builds_by_author")
-    query = """
-    WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
-                          FROM hero_builds
-                          ORDER BY version DESC)
-    SELECT data as builds
-    FROM hero_builds
-    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND author_id = %s
-    """
-    args = [int(only_latest), author_id]
-    if sort_by is not None:
-        if sort_by == "favorites":
-            query += " ORDER BY favorites"
-        elif sort_by == "ignores":
-            query += " ORDER BY ignores"
-        elif sort_by == "reports":
-            query += " ORDER BY reports"
-        elif sort_by == "updated_at":
-            query += " ORDER BY updated_at"
-        if sort_direction is not None:
-            query += f" {sort_direction}"
-
-    if limit is not None or start is not None:
-        if start is None:
-            start = 0
-        if limit is None:
-            raise HTTPException(
-                status_code=400, detail="Start cannot be provided without limit"
-            )
-        if limit != -1:
-            query += " LIMIT %s OFFSET %s"
-            args += [limit, start]
-
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, tuple(args))
-        results = cursor.fetchall()
-    return [b for b in [Build.model_validate(result[0]) for result in results] if b]
-
-
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_build(build_id: int) -> Build:
-    LOGGER.debug("load_build")
-    query = (
-        "SELECT data FROM hero_builds WHERE build_id = %s ORDER BY version DESC LIMIT 1"
-    )
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, (build_id,))
-        result = cursor.fetchone()
-        if result is None:
-            raise HTTPException(status_code=404, detail="Build not found")
-        return Build.model_validate(result[0])
-
-
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_build_version(build_id: int, version: int) -> Build:
-    LOGGER.debug("load_build")
-    query = "SELECT data FROM hero_builds WHERE build_id = %s AND version = %s"
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, (build_id, version))
-        result = cursor.fetchone()
-        if result is None:
-            raise HTTPException(status_code=404, detail="Build not found")
-        return Build.model_validate(result[0])
-
-
-@ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
-def fetch_active_matches() -> list[ActiveMatch]:
+    bucket = os.environ.get("S3_BUCKET_NAME", "hexe")
+    key = f"processed/metadata/{match_id}.meta.bz2"
+    s3 = s3_conn()
+    object_exists = True
     try:
-        LOGGER.debug("load_build")
-        msg = call_steam_proxy_raw(
-            k_EMsgClientToGCGetActiveMatches, CMsgClientToGCGetActiveMatches()
+        s3.head_object(Bucket=bucket, Key=key)
+    except s3.exceptions.ClientError:
+        object_exists = False
+    if object_exists:
+        obj = s3.get_object(Bucket=bucket, Key=key)
+    else:
+        salts = get_match_salts(match_id)
+        meta_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
+        metafile = requests.get(meta_url)
+        metafile.raise_for_status()
+        metafile = metafile.content
+        s3.put_object(
+            Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
         )
-        return [
-            ActiveMatch.from_msg(m)
-            for m in CMsgClientToGCGetActiveMatchesResponse.FromString(
-                snappy.decompress(msg[7:])
-            ).active_matches
-        ]
-    except Exception:
-        return load_active_matches()
-
-
-@ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
-def load_active_matches() -> list[ActiveMatch]:
-    LOGGER.debug("load_active_matches")
-    last_exc = None
-    for i in range(LOAD_FILE_RETRIES):
-        try:
-            with open("active_matches.json") as f:
-                return APIActiveMatch.model_validate_json(f.read()).active_matches
-        except Exception as e:
-            last_exc = e
-            LOGGER.warning(
-                f"Error loading active matches: {str(e)}, retry ({i + 1}/{LOAD_FILE_RETRIES})"
-            )
-        sleep(50)
-    send_webhook_message(f"Error loading active matches: {str(last_exc)}")
-    raise HTTPException(status_code=500, detail="Failed to load active matches")
-
-
-@ttl_cache(ttl=30 * 60)
-def fetch_patch_notes() -> list[PatchNote]:
-    LOGGER.debug("fetch_patch_notes")
-    rss_url = "https://forums.playdeadlock.com/forums/changelog.10/index.rss"
-    response = requests.get(rss_url)
-    items = xmltodict.parse(response.text)["rss"]["channel"]["item"]
-    return [PatchNote.model_validate(item) for item in items]
+        obj = s3.get_object(Bucket=bucket, Key=key)
+    return StreamingResponse(
+        obj["Body"],
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
+            "Cache-Control": "public, max-age=1200",
+        },
+    )

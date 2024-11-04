@@ -1,5 +1,6 @@
 import os
 
+import boto3
 import psycopg2
 import redis
 from clickhouse_pool import ChPool
@@ -17,6 +18,16 @@ REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
 REDIS_PASS = os.environ.get("REDIS_PASS")
 POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "postgres")
 POSTGRES_PASS = os.environ.get("POSTGRES_PASS")
+
+
+def s3_conn():
+    return boto3.client(
+        service_name="s3",
+        region_name=os.environ.get("S3_REGION"),
+        endpoint_url=os.environ.get("S3_ENDPOINT_URL_WITH_PROTOCOL"),
+        aws_access_key_id=os.environ.get("S3_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.environ.get("S3_SECRET_ACCESS_KEY"),
+    )
 
 
 def redis_conn():
