@@ -18,14 +18,16 @@ from deadlock_data_api.globs import postgres_conn
 
 LOGGER = logging.getLogger(__name__)
 
-WEBHOOK_URL = "https://discord.com/api/webhooks/1286415194427363380/Bb5mGAqn1yicXzRigxOkyYxZiGsL1AXI-PqxMf7Z7oxqTh4wBsN1oGHThbDGhKNZ9NAC"
-WEBHOOK = DiscordWebhook(url=WEBHOOK_URL)
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
+WEBHOOK = DiscordWebhook(url=DISCORD_WEBHOOK_URL) if DISCORD_WEBHOOK_URL else None
 STEAM_PROXY_URL = os.environ.get("STEAM_PROXY_URL")
 STEAM_PROXY_API_TOKEN = os.environ.get("STEAM_PROXY_API_TOKEN")
 STEAM_ID_64_IDENT = 76561197960265728
 
 
 def send_webhook_message(message: str):
+    if WEBHOOK is None:
+        LOGGER.warning("No Discord webhook URL provided")
     LOGGER.info(f"Sending webhook message: {message}")
     WEBHOOK.content = message
     WEBHOOK.execute()
