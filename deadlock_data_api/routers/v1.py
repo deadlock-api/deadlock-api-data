@@ -212,6 +212,7 @@ def player_match_history(
         [RateLimit(limit=1200, period=60)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
+    account_id = utils.validate_steam_id(account_id)
     return get_player_match_history(account_id)
 
 
