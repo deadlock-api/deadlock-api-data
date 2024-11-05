@@ -70,6 +70,14 @@ def get_robots() -> str:
 
 
 if __name__ == "__main__":
-    import uvicorn
+    import granian
+    from granian.constants import Interfaces
+    from granian.log import LogLevels
 
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    granian.Granian(
+        "deadlock_data_api.main:app",
+        address="0.0.0.0",
+        port=8080,
+        interface=Interfaces.ASGI,
+        log_level=LogLevels.debug,
+    ).serve()
