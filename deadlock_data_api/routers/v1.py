@@ -270,3 +270,21 @@ def get_raw_metadata_file(
             "Cache-Control": "public, max-age=1200",
         },
     )
+
+
+@router.get(
+    "/matches/{match_id}/demo-url",
+    summary="RateLimit: 1req/min & 100req/h, API-Key RateLimit: 10req/min",
+)
+def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
+    limiter.apply_limits(
+        req,
+        res,
+        "/v1/matches/{match_id}/demo-url",
+        [RateLimit(limit=1, period=60), RateLimit(limit=100, period=3600)],
+        [RateLimit(limit=10, period=60)],
+        [RateLimit(limit=3, period=1)],
+    )
+    salts = get_match_salts(match_id)
+    demo_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
+    return {"demo_url": demo_url}

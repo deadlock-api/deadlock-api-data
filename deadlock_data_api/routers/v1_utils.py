@@ -1,5 +1,4 @@
 import logging
-import os
 from time import sleep
 from typing import Literal
 
@@ -54,22 +53,31 @@ def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
 
 @ttl_cache(ttl=60)
 def get_match_salts(match_id: int) -> CMsgClientToGCGetMatchMetaDataResponse:
+    with CH_POOL.get_client() as client:
+        result = client.execute(
+            "SELECT metadata_salt, replay_salt, cluster_id FROM match_salts WHERE match_id = %(match_id)s",
+            {"match_id": match_id},
+        )
+        if result:
+            result = result[0]
+            return CMsgClientToGCGetMatchMetaDataResponse(
+                metadata_salt=result[0], replay_salt=result[1], cluster_id=result[2]
+            )
     msg = CMsgClientToGCGetMatchMetaData()
     msg.match_id = match_id
     msg = call_steam_proxy(
         k_EMsgClientToGCGetMatchMetaData, msg, CMsgClientToGCGetMatchMetaDataResponse
     )
-    requests.post(
-        f"https://analytics.deadlock-api.com/v1/match-salts?api_key={os.environ['INTERNAL_DEADLOCK_API_KEY']}",
-        json=[
+    with CH_POOL.get_client() as client:
+        client.execute(
+            "INSERT INTO match_salts (match_id, metadata_salt, replay_salt, cluster_id) VALUES (%(match_id)s, %(metadata_salt)s, %(replay_salt)s, %(cluster_id)s)",
             {
-                "cluster_id": msg.cluster_id,
                 "match_id": match_id,
                 "metadata_salt": msg.metadata_salt,
                 "replay_salt": msg.replay_salt,
-            }
-        ],
-    ).raise_for_status()
+                "cluster_id": msg.cluster_id,
+            },
+        )
     return msg
 
 
