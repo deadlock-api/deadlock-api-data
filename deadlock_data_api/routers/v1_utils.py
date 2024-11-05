@@ -87,6 +87,8 @@ def load_builds(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    search_name: str | None = None,
+    search_description: str | None = None,
     only_latest: bool = False,
 ) -> list[Build]:
     LOGGER.debug("load_builds")
@@ -96,8 +98,14 @@ def load_builds(
                           ORDER BY version DESC)
     SELECT data as builds
     FROM hero_builds
-    WHERE build_id IN (SELECT * FROM latest_build_ids) OR %s = 1
+    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1)
     """
+    if search_name is not None:
+        search_name = search_name.lower()
+        query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
+    if search_description is not None:
+        search_description = search_description.lower()
+        query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
     args = [int(only_latest)]
     if sort_by is not None:
         if sort_by == "favorites":
@@ -138,6 +146,8 @@ def load_builds_by_hero(
         Literal["favorites", "ignores", "reports", "updated_at"] | None
     ) = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    search_name: str | None = None,
+    search_description: str | None = None,
     only_latest: bool = False,
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_hero")
@@ -149,6 +159,12 @@ def load_builds_by_hero(
     FROM hero_builds
     WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND hero = %s
     """
+    if search_name is not None:
+        search_name = search_name.lower()
+        query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
+    if search_description is not None:
+        search_description = search_description.lower()
+        query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
     args = [int(only_latest), hero_id]
     if sort_by is not None:
         if sort_by == "favorites":

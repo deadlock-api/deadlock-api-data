@@ -57,13 +57,23 @@ def get_builds(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    search_name: str | None = None,
+    search_description: str | None = None,
     only_latest: bool | None = None,
 ) -> list[Build]:
     only_latest = only_latest or False
     LOGGER.info("get_builds")
     limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=10, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds(start, limit, sort_by, sort_direction, only_latest)
+    return load_builds(
+        start,
+        limit,
+        sort_by,
+        sort_direction,
+        search_name,
+        search_description,
+        only_latest,
+    )
 
 
 @router.get("/builds/{build_id}", response_model_exclude_none=True)
@@ -89,6 +99,8 @@ def get_builds_by_hero_id(
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
+    search_name: str | None = None,
+    search_description: str | None = None,
     only_latest: bool | None = None,
 ) -> list[Build]:
     only_latest = only_latest or False
@@ -98,7 +110,14 @@ def get_builds_by_hero_id(
     )
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_builds_by_hero(
-        hero_id, start, limit, sort_by, sort_direction, only_latest
+        hero_id,
+        start,
+        limit,
+        sort_by,
+        sort_direction,
+        search_name,
+        search_description,
+        only_latest,
     )
 
 
