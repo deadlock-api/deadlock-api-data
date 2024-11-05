@@ -304,6 +304,6 @@ def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
         [RateLimit(limit=10, period=60)],
         [RateLimit(limit=3, period=1)],
     )
-    salts = get_match_salts(match_id)
+    salts = get_match_salts(match_id, True)
     demo_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
     return {"demo_url": demo_url}

@@ -7,6 +7,7 @@ import snappy
 import xmltodict
 from cachetools.func import ttl_cache
 from fastapi import HTTPException
+from starlette.status import HTTP_404_NOT_FOUND
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgClientToGCGetActiveMatches,
     CMsgClientToGCGetActiveMatchesResponse,
@@ -52,7 +53,9 @@ def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
 
 
 @ttl_cache(ttl=60)
-def get_match_salts(match_id: int) -> CMsgClientToGCGetMatchMetaDataResponse:
+def get_match_salts(
+    match_id: int, need_demo: bool = False
+) -> CMsgClientToGCGetMatchMetaDataResponse:
     with CH_POOL.get_client() as client:
         result = client.execute(
             "SELECT metadata_salt, replay_salt, cluster_id FROM match_salts WHERE match_id = %(match_id)s",
@@ -60,14 +63,17 @@ def get_match_salts(match_id: int) -> CMsgClientToGCGetMatchMetaDataResponse:
         )
         if result:
             result = result[0]
-            return CMsgClientToGCGetMatchMetaDataResponse(
-                metadata_salt=result[0], replay_salt=result[1], cluster_id=result[2]
-            )
+            if not need_demo or result[1] != 0:
+                return CMsgClientToGCGetMatchMetaDataResponse(
+                    metadata_salt=result[0], replay_salt=result[1], cluster_id=result[2]
+                )
     msg = CMsgClientToGCGetMatchMetaData()
     msg.match_id = match_id
     msg = call_steam_proxy(
         k_EMsgClientToGCGetMatchMetaData, msg, CMsgClientToGCGetMatchMetaDataResponse
     )
+    if msg.metadata_salt == 0 or (need_demo and msg.replay_salt == 0):
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Match not found")
     with CH_POOL.get_client() as client:
         client.execute(
             "INSERT INTO match_salts (match_id, metadata_salt, replay_salt, cluster_id) VALUES (%(match_id)s, %(metadata_salt)s, %(replay_salt)s, %(cluster_id)s)",
