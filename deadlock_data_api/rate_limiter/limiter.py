@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 from cachetools.func import ttl_cache
@@ -13,6 +14,7 @@ from deadlock_data_api.rate_limiter.models import RateLimit, RateLimitStatus
 LOGGER = logging.getLogger(__name__)
 
 MAX_TTL_SECONDS = 60 * 60  # 1 hour
+EMERGENCY_MODE = os.environ.get("EMERGENCY_MODE", "false").lower() == "true"
 
 
 def apply_limits(
@@ -25,6 +27,12 @@ def apply_limits(
 ):
     ip = request.headers.get("CF-Connecting-IP", request.client.host)
     api_key = request.headers.get("X-API-Key", request.query_params.get("api_key"))
+    if api_key is None and EMERGENCY_MODE:
+        raise HTTPException(
+            status_code=503,
+            detail="API key required in emergency mode",
+            headers={"Retry-After": "60"},
+        )
     api_key = (
         api_key.lstrip("HEXE-")
         if api_key is not None
