@@ -99,20 +99,21 @@ def load_builds(
 ) -> list[Build]:
     LOGGER.debug("load_builds")
     query = """
-    WITH latest_build_ids as (SELECT DISTINCT ON (build_id) build_id
+    WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
                           FROM hero_builds
                           ORDER BY build_id, version DESC)
     SELECT data as builds
     FROM hero_builds
-    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1)
     """
+    if only_latest:
+        query += " WHERE (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
     if search_name is not None:
         search_name = search_name.lower()
         query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
     if search_description is not None:
         search_description = search_description.lower()
         query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
-    args = [int(only_latest)]
+    args = []
     if sort_by is not None:
         if sort_by == "favorites":
             query += " ORDER BY favorites"
@@ -158,20 +159,22 @@ def load_builds_by_hero(
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_hero")
     query = """
-    WITH latest_build_ids as (SELECT DISTINCT ON (build_id) build_id
+    WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
                           FROM hero_builds
                           ORDER BY build_id, version DESC)
     SELECT data as builds
     FROM hero_builds
-    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND hero = %s
+    WHERE hero = %s
     """
+    if only_latest:
+        query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
     if search_name is not None:
         search_name = search_name.lower()
         query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
     if search_description is not None:
         search_description = search_description.lower()
         query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
-    args = [int(only_latest), hero_id]
+    args = [hero_id]
     if sort_by is not None:
         if sort_by == "favorites":
             query += " ORDER BY favorites"
@@ -213,14 +216,16 @@ def load_builds_by_author(
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_author")
     query = """
-    WITH latest_build_ids as (SELECT DISTINCT ON (build_id) build_id
+    WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
                           FROM hero_builds
                           ORDER BY build_id, version DESC)
     SELECT data as builds
     FROM hero_builds
-    WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND author_id = %s
+    WHERE author_id = %s
     """
-    args = [int(only_latest), author_id]
+    if only_latest:
+        query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
+    args = [author_id]
     if sort_by is not None:
         if sort_by == "favorites":
             query += " ORDER BY favorites"
