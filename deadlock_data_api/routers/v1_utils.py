@@ -99,9 +99,9 @@ def load_builds(
 ) -> list[Build]:
     LOGGER.debug("load_builds")
     query = """
-    WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
+    WITH latest_build_ids as (SELECT DISTINCT ON (build_id) build_id
                           FROM hero_builds
-                          ORDER BY version DESC)
+                          ORDER BY build_id, version DESC)
     SELECT data as builds
     FROM hero_builds
     WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1)
@@ -158,9 +158,9 @@ def load_builds_by_hero(
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_hero")
     query = """
-    WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
+    WITH latest_build_ids as (SELECT DISTINCT ON (build_id) build_id
                           FROM hero_builds
-                          ORDER BY version DESC)
+                          ORDER BY build_id, version DESC)
     SELECT data as builds
     FROM hero_builds
     WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND hero = %s
@@ -213,9 +213,9 @@ def load_builds_by_author(
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_author")
     query = """
-    WITH latest_build_ids as (SELECT DISTINCT ON (build_id, version) (build_id)
+    WITH latest_build_ids as (SELECT DISTINCT ON (build_id) build_id
                           FROM hero_builds
-                          ORDER BY version DESC)
+                          ORDER BY build_id, version DESC)
     SELECT data as builds
     FROM hero_builds
     WHERE (build_id IN (SELECT * FROM latest_build_ids) OR %s = 1) AND author_id = %s
