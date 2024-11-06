@@ -55,7 +55,7 @@ def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
 @ttl_cache(ttl=60)
 def get_match_salts(
     match_id: int, need_demo: bool = False
-) -> CMsgClientToGCGetMatchMetaDataResponse:
+) -> (CMsgClientToGCGetMatchMetaDataResponse, bool):
     with CH_POOL.get_client() as client:
         result = client.execute(
             "SELECT metadata_salt, replay_salt, cluster_id FROM match_salts WHERE match_id = %(match_id)s",
@@ -64,8 +64,13 @@ def get_match_salts(
         if result:
             result = result[0]
             if not need_demo or result[1] != 0:
-                return CMsgClientToGCGetMatchMetaDataResponse(
-                    metadata_salt=result[0], replay_salt=result[1], cluster_id=result[2]
+                return (
+                    CMsgClientToGCGetMatchMetaDataResponse(
+                        metadata_salt=result[0],
+                        replay_salt=result[1],
+                        cluster_id=result[2],
+                    ),
+                    True,
                 )
     msg = CMsgClientToGCGetMatchMetaData()
     msg.match_id = match_id
@@ -84,7 +89,7 @@ def get_match_salts(
                 "cluster_id": msg.cluster_id,
             },
         )
-    return msg
+    return msg, False
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
