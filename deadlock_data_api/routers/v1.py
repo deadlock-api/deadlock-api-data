@@ -272,7 +272,7 @@ def get_raw_metadata_file(
     if object_exists:
         obj = s3.get_object(Bucket=bucket, Key=key)
     else:
-        salts, _ = get_match_salts(match_id)
+        salts = get_match_salts(match_id)
         meta_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
         metafile = requests.get(meta_url)
         metafile.raise_for_status()
@@ -296,24 +296,14 @@ def get_raw_metadata_file(
     summary="RateLimit: 1req/min & 100req/h, API-Key RateLimit: 10req/min",
 )
 def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
-    salts, from_db = get_match_salts(match_id, True)
-    if from_db:
-        limiter.apply_limits(
-            req,
-            res,
-            "/v1/matches/{match_id}/demo-url#db",
-            [RateLimit(limit=60, period=60), RateLimit(limit=1000, period=3600)],
-            [RateLimit(limit=60, period=60)],
-            [RateLimit(limit=3, period=1)],
-        )
-    else:
-        limiter.apply_limits(
-            req,
-            res,
-            "/v1/matches/{match_id}/demo-url#gc",
-            [RateLimit(limit=1, period=60), RateLimit(limit=100, period=3600)],
-            [RateLimit(limit=5, period=60)],
-            [RateLimit(limit=3, period=1)],
-        )
+    limiter.apply_limits(
+        req,
+        res,
+        "/v1/matches/{match_id}/demo-url",
+        [RateLimit(limit=1, period=60), RateLimit(limit=100, period=3600)],
+        [RateLimit(limit=10, period=60)],
+        [RateLimit(limit=3, period=1)],
+    )
+    salts = get_match_salts(match_id, True)
     demo_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
     return {"demo_url": demo_url}
