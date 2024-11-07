@@ -51,8 +51,15 @@ R = TypeVar("R", bound=Message)
 
 
 def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
-    data = call_steam_proxy_raw(msg_type, msg)
-    return response_type.FromString(data)
+    MAX_RETRIES = 3
+    for i in range(MAX_RETRIES):
+        try:
+            data = call_steam_proxy_raw(msg_type, msg)
+            return response_type.FromString(data)
+        except Exception as e:
+            LOGGER.warning(f"Failed to call Steam proxy: {e}")
+            if i == MAX_RETRIES - 1:
+                raise
 
 
 def call_steam_proxy_raw(msg_type, msg):
