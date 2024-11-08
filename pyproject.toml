@@ -24,7 +24,7 @@ sentry-sdk = { version = "^2.18.0", extras = ["fastapi"] }
 python-snappy = "^0.7.3"
 xmltodict = "^0.14.2"
 valveprotos-py = { git = "https://github.com/deadlock-api/valveprotos-py" }
-boto3 = "^1.35.54"
+boto3 = "^1.35.56"
 granian = "^1.6.3"
 
 

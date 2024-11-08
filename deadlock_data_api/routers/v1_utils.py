@@ -53,20 +53,27 @@ def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
 
 
 @ttl_cache(ttl=60)
-def get_match_salts(
+def get_match_salts_from_db(
     match_id: int, need_demo: bool = False
-) -> CMsgClientToGCGetMatchMetaDataResponse:
+) -> CMsgClientToGCGetMatchMetaDataResponse | None:
     with CH_POOL.get_client() as client:
         result = client.execute(
             "SELECT metadata_salt, replay_salt, cluster_id FROM match_salts WHERE match_id = %(match_id)s",
             {"match_id": match_id},
         )
-        if result:
-            result = result[0]
-            if not need_demo or result[1] != 0:
-                return CMsgClientToGCGetMatchMetaDataResponse(
-                    metadata_salt=result[0], replay_salt=result[1], cluster_id=result[2]
-                )
+    if result:
+        result = result[0]
+        if not need_demo or result[1] != 0:
+            return CMsgClientToGCGetMatchMetaDataResponse(
+                metadata_salt=result[0], replay_salt=result[1], cluster_id=result[2]
+            )
+    return None
+
+
+@ttl_cache(ttl=60)
+def get_match_salts_from_steam(
+    match_id: int, need_demo: bool = False
+) -> CMsgClientToGCGetMatchMetaDataResponse:
     msg = CMsgClientToGCGetMatchMetaData()
     msg.match_id = match_id
     msg = call_steam_proxy(

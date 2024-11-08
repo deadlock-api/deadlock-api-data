@@ -24,7 +24,8 @@ from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
     fetch_active_matches,
     fetch_patch_notes,
-    get_match_salts,
+    get_match_salts_from_db,
+    get_match_salts_from_steam,
     get_player_match_history,
     load_build,
     load_build_version,
@@ -42,14 +43,14 @@ LOGGER = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1")
 
 
-@router.get("/patch-notes")
+@router.get("/patch-notes", summary="No Rate Limits")
 def get_patch_notes(res: Response):
     LOGGER.info("get_patch_notes")
     res.headers["Cache-Control"] = f"public, max-age={30 * 60}"
     return fetch_patch_notes()
 
 
-@router.get("/builds", response_model_exclude_none=True)
+@router.get("/builds", response_model_exclude_none=True, summary="Rate Limit 100req/s")
 def get_builds(
     req: Request,
     res: Response,
@@ -63,7 +64,7 @@ def get_builds(
 ) -> list[Build]:
     only_latest = only_latest or False
     LOGGER.info("get_builds")
-    limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=10, period=1)])
+    limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=100, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_builds(
         start,
@@ -76,7 +77,11 @@ def get_builds(
     )
 
 
-@router.get("/builds/{build_id}", response_model_exclude_none=True)
+@router.get(
+    "/builds/{build_id}",
+    response_model_exclude_none=True,
+    summary="Rate Limit 100req/s",
+)
 def get_build(
     req: Request, res: Response, build_id: int, version: int | None = None
 ) -> Build:
@@ -90,7 +95,11 @@ def get_build(
     )
 
 
-@router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
+@router.get(
+    "/builds/by-hero-id/{hero_id}",
+    response_model_exclude_none=True,
+    summary="Rate Limit 100req/s",
+)
 def get_builds_by_hero_id(
     req: Request,
     res: Response,
@@ -121,7 +130,11 @@ def get_builds_by_hero_id(
     )
 
 
-@router.get("/builds/by-author-id/{author_id}", response_model_exclude_none=True)
+@router.get(
+    "/builds/by-author-id/{author_id}",
+    response_model_exclude_none=True,
+    summary="Rate Limit 100req/s",
+)
 def get_builds_by_author_id(
     req: Request,
     res: Response,
@@ -149,14 +162,14 @@ def get_builds_by_author_id(
 @router.get(
     "/active-matches",
     response_model_exclude_none=True,
-    summary="Updates every 20s | Rate Limit 15req/20s",
+    summary="Updates every 20s | Rate Limit 100req/s",
 )
 def get_active_matches(
     req: Request, res: Response, account_id: int | None = None
 ) -> list[ActiveMatch]:
     LOGGER.info("get_active_matches")
     limiter.apply_limits(
-        req, res, "/v1/active-matches", [RateLimit(limit=15, period=20)]
+        req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)]
     )
     last_modified = os.path.getmtime("active_matches.json")
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
@@ -179,7 +192,7 @@ def get_active_matches(
 @router.get(
     "/players/{account_id}/rank",
     response_model_exclude_none=True,
-    summary="Rate Limit 10req/min, API-Key RateLimit: 100req/min & 5000req/h, Ask for an increase if needed",
+    summary="Rate Limit 10req/min, API-Key RateLimit: 20req/s",
 )
 def player_rank(
     req: Request,
@@ -192,8 +205,7 @@ def player_rank(
         res,
         "/v1/players/{account_id}/rank",
         [RateLimit(limit=10, period=60)],
-        [RateLimit(limit=100, period=60), RateLimit(limit=5000, period=3600)],
-        [RateLimit(limit=1200, period=60)],
+        [RateLimit(limit=20, period=1)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     account_id = utils.validate_steam_id(account_id)
@@ -214,7 +226,7 @@ def get_player_rank(account_id: int) -> PlayerCard:
 @router.get(
     "/players/{account_id}/match-history",
     response_model_exclude_none=True,
-    summary="Rate Limit 10req/min, API-Key RateLimit: 100req/min & 5000req/h",
+    summary="Rate Limit 60req/min, API-Key RateLimit: 20req/s",
 )
 def player_match_history(
     req: Request,
@@ -226,9 +238,8 @@ def player_match_history(
         req,
         res,
         "/v1/players/{account_id}/match-history",
-        [RateLimit(limit=10, period=60)],
-        [RateLimit(limit=100, period=60), RateLimit(limit=5000, period=3600)],
-        [RateLimit(limit=1200, period=60)],
+        [RateLimit(limit=60, period=60)],
+        [RateLimit(limit=20, period=1)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     account_id = utils.validate_steam_id(account_id)
@@ -248,7 +259,7 @@ Protobuf definitions can be found here: [https://github.com/SteamDatabase/Protob
 
 At the moment the rate limits are quite strict, as we are serving it from an s3 with egress costs, but that may change.
     """,
-    summary="RateLimit: 1req/min & 100req/h, API-Key RateLimit: 10req/min",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s",
 )
 def get_raw_metadata_file(
     req: Request, res: Response, match_id: int
@@ -257,9 +268,8 @@ def get_raw_metadata_file(
         req,
         res,
         "/v1/matches/{match_id}/raw_metadata",
-        [RateLimit(limit=1, period=60), RateLimit(limit=100, period=3600)],
-        [RateLimit(limit=10, period=60)],
-        [RateLimit(limit=3, period=1)],
+        [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
+        [RateLimit(limit=20, period=1)],
     )
     bucket = os.environ.get("S3_BUCKET_NAME", "hexe")
     key = f"processed/metadata/{match_id}.meta.bz2"
@@ -271,16 +281,33 @@ def get_raw_metadata_file(
         object_exists = False
     if object_exists:
         obj = s3.get_object(Bucket=bucket, Key=key)
-    else:
-        salts = get_match_salts(match_id)
-        meta_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
-        metafile = requests.get(meta_url)
-        metafile.raise_for_status()
-        metafile = metafile.content
-        s3.put_object(
-            Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
+        return StreamingResponse(
+            obj["Body"],
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
+                "Cache-Control": "public, max-age=1200",
+            },
         )
-        obj = s3.get_object(Bucket=bucket, Key=key)
+    salts = get_match_salts_from_db(match_id)
+    if salts is None:
+        limiter.apply_limits(
+            req,
+            res,
+            "/v1/matches/{match_id}/raw_metadata#steam",
+            [RateLimit(limit=1, period=60), RateLimit(limit=10, period=3600)],
+            [RateLimit(limit=20, period=1)],
+            [RateLimit(limit=3000, period=3600)],
+        )
+        salts = get_match_salts_from_steam(match_id)
+    meta_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
+    metafile = requests.get(meta_url)
+    metafile.raise_for_status()
+    metafile = metafile.content
+    s3.put_object(
+        Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
+    )
+    obj = s3.get_object(Bucket=bucket, Key=key)
     return StreamingResponse(
         obj["Body"],
         media_type="application/octet-stream",
@@ -293,17 +320,26 @@ def get_raw_metadata_file(
 
 @router.get(
     "/matches/{match_id}/demo-url",
-    summary="RateLimit: 1req/min & 100req/h, API-Key RateLimit: 10req/min",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s",
 )
 def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
     limiter.apply_limits(
         req,
         res,
         "/v1/matches/{match_id}/demo-url",
-        [RateLimit(limit=1, period=60), RateLimit(limit=100, period=3600)],
-        [RateLimit(limit=10, period=60)],
-        [RateLimit(limit=3, period=1)],
+        [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
+        [RateLimit(limit=20, period=1)],
     )
-    salts = get_match_salts(match_id, True)
+    salts = get_match_salts_from_db(match_id, True)
+    if salts is None:
+        limiter.apply_limits(
+            req,
+            res,
+            "/v1/matches/{match_id}/demo-url#steam",
+            [RateLimit(limit=1, period=60), RateLimit(limit=10, period=3600)],
+            [RateLimit(limit=20, period=1)],
+            [RateLimit(limit=3000, period=3600)],
+        )
+        salts = get_match_salts_from_steam(match_id, True)
     demo_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
     return {"demo_url": demo_url}
