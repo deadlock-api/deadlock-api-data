@@ -1,15 +1,21 @@
+import bz2
 import logging
 import os
 from typing import Literal
 
 from cachetools.func import ttl_cache
 from fastapi import APIRouter
+from google.protobuf.json_format import MessageToDict
 from starlette.requests import Request
-from starlette.responses import RedirectResponse, Response, StreamingResponse
+from starlette.responses import JSONResponse, RedirectResponse, Response
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
     CMsgClientToGCGetProfileCard,
     k_EMsgClientToGCGetProfileCard,
+)
+from valveprotos_py.citadel_gcmessages_common_pb2 import (
+    CMsgMatchMetaData,
+    CMsgMatchMetaDataContents,
 )
 
 from deadlock_data_api import utils
@@ -268,15 +274,13 @@ Protobuf definitions can be found here: [https://github.com/SteamDatabase/Protob
 
 At the moment the rate limits are quite strict, as we are serving it from an s3 with egress costs, but that may change.
     """,
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /metadata",
 )
-def get_raw_metadata_file(
-    req: Request, res: Response, match_id: int
-) -> StreamingResponse:
+def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Response:
     limiter.apply_limits(
         req,
         res,
-        "/v1/matches/{match_id}/raw-metadata",
+        "/v1/matches/{match_id}/metadata",
         [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
         [RateLimit(limit=20, period=1)],
     )
@@ -284,8 +288,8 @@ def get_raw_metadata_file(
     try:
         meta = redis_conn().get(f"metadata:{match_id}")
         if meta is not None:
-            return StreamingResponse(
-                meta,
+            return Response(
+                content=meta,
                 media_type="application/octet-stream",
                 headers={
                     "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
@@ -305,8 +309,8 @@ def get_raw_metadata_file(
     if object_exists:
         obj = s3_conn().get_object(Bucket=bucket, Key=key)
         redis_conn().set(f"metadata:{match_id}", obj["Body"], ex=4 * 60 * 60)
-        return StreamingResponse(
-            obj["Body"],
+        return Response(
+            content=obj["Body"],
             media_type="application/octet-stream",
             headers={
                 "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
@@ -318,7 +322,7 @@ def get_raw_metadata_file(
         limiter.apply_limits(
             req,
             res,
-            "/v1/matches/{match_id}/raw-metadata#steam",
+            "/v1/matches/{match_id}/metadata#steam",
             [RateLimit(limit=1, period=60), RateLimit(limit=10, period=3600)],
             [RateLimit(limit=20, period=1)],
             [RateLimit(limit=3000, period=3600)],
@@ -337,14 +341,28 @@ def get_raw_metadata_file(
         redis_conn().set(f"metadata:{match_id}", metafile, ex=4 * 60 * 60)
     except Exception:
         LOGGER.error("Failed to cache metadata to redis")
-    return StreamingResponse(
-        [metafile],
+    return Response(
+        content=metafile,
         media_type="application/octet-stream",
         headers={
             "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
             "Cache-Control": "public, max-age=1200",
         },
     )
+
+
+@router.get(
+    "/matches/{match_id}/metadata",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /raw-metadata",
+)
+async def get_metadata(req: Request, res: Response, match_id: int) -> JSONResponse:
+    raw_metadata = get_raw_metadata_file(req, res, match_id).body
+    raw_metadata_decompressed = bz2.decompress(raw_metadata)
+    metadata = CMsgMatchMetaData()
+    metadata.ParseFromString(raw_metadata_decompressed)
+    match_contents = CMsgMatchMetaDataContents()
+    match_contents.ParseFromString(metadata.match_details)
+    return JSONResponse(MessageToDict(match_contents))
 
 
 @router.get(
