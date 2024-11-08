@@ -293,6 +293,7 @@ def get_raw_metadata_file(
         object_exists = False
     if object_exists:
         obj = s3.get_object(Bucket=bucket, Key=key)
+        redis_conn().set(f"metadata:{match_id}", obj["Body"], ex=4 * 60 * 60)
         return StreamingResponse(
             obj["Body"],
             media_type="application/octet-stream",
@@ -315,15 +316,11 @@ def get_raw_metadata_file(
 
     metafile = fetch_metadata(match_id, salts)
 
-    # Put on S3
     s3.put_object(
         Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
     )
-
-    # Put on Redis
-    redis_conn().set(f"metadata:{match_id}", metafile, ex=4 * 60 * 60)
-
     obj = s3.get_object(Bucket=bucket, Key=key)
+    redis_conn().set(f"metadata:{match_id}", obj["Body"], ex=4 * 60 * 60)
     return StreamingResponse(
         obj["Body"],
         media_type="application/octet-stream",
