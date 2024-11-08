@@ -296,8 +296,8 @@ def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Respons
                     "Cache-Control": "public, max-age=1200",
                 },
             )
-    except Exception:
-        LOGGER.error("Failed to fetch metadata from redis")
+    except Exception as e:
+        LOGGER.warning(f"Failed to get metadata from redis: {e}")
 
     bucket = os.environ.get("S3_BUCKET_NAME", "hexe")
     key = f"processed/metadata/{match_id}.meta.bz2"
