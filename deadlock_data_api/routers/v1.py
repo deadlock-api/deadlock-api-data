@@ -5,7 +5,7 @@ from typing import Literal
 from cachetools.func import ttl_cache
 from fastapi import APIRouter
 from starlette.requests import Request
-from starlette.responses import Response, StreamingResponse
+from starlette.responses import RedirectResponse, Response, StreamingResponse
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
     CMsgClientToGCGetProfileCard,
@@ -250,8 +250,13 @@ def player_match_history(
     return get_player_match_history(account_id)
 
 
+@router.get("/matches/{match_id}/raw_metadata", include_in_schema=False)
+def get_raw_metadata_file_old(match_id: int):
+    return RedirectResponse(url=f"/v1/matches/{match_id}/raw-metadata", status_code=301)
+
+
 @router.get(
-    "/matches/{match_id}/raw_metadata",
+    "/matches/{match_id}/raw-metadata",
     description="""
 # Raw Metadata
 
@@ -271,7 +276,7 @@ def get_raw_metadata_file(
     limiter.apply_limits(
         req,
         res,
-        "/v1/matches/{match_id}/raw_metadata",
+        "/v1/matches/{match_id}/raw-metadata",
         [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
         [RateLimit(limit=20, period=1)],
     )
@@ -313,7 +318,7 @@ def get_raw_metadata_file(
         limiter.apply_limits(
             req,
             res,
-            "/v1/matches/{match_id}/raw_metadata#steam",
+            "/v1/matches/{match_id}/raw-metadata#steam",
             [RateLimit(limit=1, period=60), RateLimit(limit=10, period=3600)],
             [RateLimit(limit=20, period=1)],
             [RateLimit(limit=3000, period=3600)],
