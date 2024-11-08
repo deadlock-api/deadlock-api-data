@@ -126,10 +126,18 @@ def load_builds(
         query += " WHERE (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
     if search_name is not None:
         search_name = search_name.lower()
-        query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
+        if "WHERE" in query:
+            query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
+        else:
+            query += (
+                f" WHERE lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
+            )
     if search_description is not None:
         search_description = search_description.lower()
-        query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
+        if "WHERE" in query:
+            query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
+        else:
+            query += f" WHERE lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
     args = []
     if sort_by is not None:
         if sort_by == "favorites":
