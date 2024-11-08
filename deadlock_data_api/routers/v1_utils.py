@@ -94,7 +94,6 @@ def get_match_salts_from_steam(
     return msg
 
 
-@ttl_cache(ttl=300)
 def fetch_metadata(
     match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse
 ) -> bytes:

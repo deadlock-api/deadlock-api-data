@@ -13,7 +13,7 @@ from valveprotos_py.citadel_gcmessages_client_pb2 import (
 )
 
 from deadlock_data_api import utils
-from deadlock_data_api.globs import CH_POOL, s3_conn
+from deadlock_data_api.globs import CH_POOL, redis_conn, s3_conn
 from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.player_card import PlayerCard
@@ -271,6 +271,18 @@ def get_raw_metadata_file(
         [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
         [RateLimit(limit=20, period=1)],
     )
+    # check if redis has the metadata
+    meta = redis_conn().get(f"metadata:{match_id}")
+    if meta is not None:
+        return StreamingResponse(
+            meta,
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
+                "Cache-Control": "public, max-age=1200",
+            },
+        )
+
     bucket = os.environ.get("S3_BUCKET_NAME", "hexe")
     key = f"processed/metadata/{match_id}.meta.bz2"
     s3 = s3_conn()
@@ -300,10 +312,17 @@ def get_raw_metadata_file(
             [RateLimit(limit=3000, period=3600)],
         )
         salts = get_match_salts_from_steam(match_id)
+
     metafile = fetch_metadata(match_id, salts)
+
+    # Put on S3
     s3.put_object(
         Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
     )
+
+    # Put on Redis
+    redis_conn().set(f"metadata:{match_id}", metafile, ex=4 * 60 * 60)
+
     obj = s3.get_object(Bucket=bucket, Key=key)
     return StreamingResponse(
         obj["Body"],
