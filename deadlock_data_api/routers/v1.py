@@ -61,6 +61,7 @@ def get_builds(
     search_name: str | None = None,
     search_description: str | None = None,
     only_latest: bool | None = None,
+    language: int | None = None,
 ) -> list[Build]:
     only_latest = only_latest or False
     LOGGER.info("get_builds")
@@ -74,6 +75,7 @@ def get_builds(
         search_name,
         search_description,
         only_latest,
+        language,
     )
 
 
@@ -111,6 +113,7 @@ def get_builds_by_hero_id(
     search_name: str | None = None,
     search_description: str | None = None,
     only_latest: bool | None = None,
+    language: int | None = None,
 ) -> list[Build]:
     only_latest = only_latest or False
     LOGGER.info("get_builds_by_hero_id")
@@ -127,6 +130,7 @@ def get_builds_by_hero_id(
         search_name,
         search_description,
         only_latest,
+        language,
     )
 
 
@@ -272,27 +276,29 @@ def get_raw_metadata_file(
         [RateLimit(limit=20, period=1)],
     )
     # check if redis has the metadata
-    meta = redis_conn().get(f"metadata:{match_id}")
-    if meta is not None:
-        return StreamingResponse(
-            meta,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
-                "Cache-Control": "public, max-age=1200",
-            },
-        )
+    try:
+        meta = redis_conn().get(f"metadata:{match_id}")
+        if meta is not None:
+            return StreamingResponse(
+                meta,
+                media_type="application/octet-stream",
+                headers={
+                    "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
+                    "Cache-Control": "public, max-age=1200",
+                },
+            )
+    except Exception:
+        LOGGER.error("Failed to fetch metadata from redis")
 
     bucket = os.environ.get("S3_BUCKET_NAME", "hexe")
     key = f"processed/metadata/{match_id}.meta.bz2"
-    s3 = s3_conn()
     object_exists = True
     try:
-        s3.head_object(Bucket=bucket, Key=key)
-    except s3.exceptions.ClientError:
+        s3_conn().head_object(Bucket=bucket, Key=key)
+    except Exception:
         object_exists = False
     if object_exists:
-        obj = s3.get_object(Bucket=bucket, Key=key)
+        obj = s3_conn().get_object(Bucket=bucket, Key=key)
         redis_conn().set(f"metadata:{match_id}", obj["Body"], ex=4 * 60 * 60)
         return StreamingResponse(
             obj["Body"],
@@ -316,13 +322,18 @@ def get_raw_metadata_file(
 
     metafile = fetch_metadata(match_id, salts)
 
-    s3.put_object(
-        Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
-    )
-    obj = s3.get_object(Bucket=bucket, Key=key)
-    redis_conn().set(f"metadata:{match_id}", obj["Body"], ex=4 * 60 * 60)
+    try:
+        s3_conn().put_object(
+            Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
+        )
+    except Exception:
+        LOGGER.error("Failed to upload metadata to s3")
+    try:
+        redis_conn().set(f"metadata:{match_id}", metafile, ex=4 * 60 * 60)
+    except Exception:
+        LOGGER.error("Failed to cache metadata to redis")
     return StreamingResponse(
-        obj["Body"],
+        [metafile],
         media_type="application/octet-stream",
         headers={
             "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",

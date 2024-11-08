@@ -113,6 +113,7 @@ def load_builds(
     search_name: str | None = None,
     search_description: str | None = None,
     only_latest: bool = False,
+    language: int | None = None,
 ) -> list[Build]:
     LOGGER.debug("load_builds")
     query = """
@@ -121,23 +122,18 @@ def load_builds(
                           ORDER BY build_id, version DESC)
     SELECT data as builds
     FROM hero_builds
+    WHERE TRUE
     """
     if only_latest:
-        query += " WHERE (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
+        query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
     if search_name is not None:
         search_name = search_name.lower()
-        if "WHERE" in query:
-            query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
-        else:
-            query += (
-                f" WHERE lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
-            )
+        query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
     if search_description is not None:
         search_description = search_description.lower()
-        if "WHERE" in query:
-            query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
-        else:
-            query += f" WHERE lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
+        query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
+    if language is not None:
+        query += f" AND language = {language}"
     args = []
     if sort_by is not None:
         if sort_by == "favorites":
@@ -181,6 +177,7 @@ def load_builds_by_hero(
     search_name: str | None = None,
     search_description: str | None = None,
     only_latest: bool = False,
+    language: int | None = None,
 ) -> list[Build]:
     LOGGER.debug("load_builds_by_hero")
     query = """
@@ -199,6 +196,8 @@ def load_builds_by_hero(
     if search_description is not None:
         search_description = search_description.lower()
         query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
+    if language is not None:
+        query += f" AND language = {language}"
     args = [hero_id]
     if sort_by is not None:
         if sort_by == "favorites":
