@@ -52,7 +52,7 @@ def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
     return match_history
 
 
-@ttl_cache(ttl=60)
+@ttl_cache(ttl=60 * 60)
 def get_match_salts_from_db(
     match_id: int, need_demo: bool = False
 ) -> CMsgClientToGCGetMatchMetaDataResponse | None:
@@ -70,7 +70,7 @@ def get_match_salts_from_db(
     return None
 
 
-@ttl_cache(ttl=60)
+@ttl_cache(ttl=60 * 60)
 def get_match_salts_from_steam(
     match_id: int, need_demo: bool = False
 ) -> CMsgClientToGCGetMatchMetaDataResponse:
@@ -92,6 +92,17 @@ def get_match_salts_from_steam(
             },
         )
     return msg
+
+
+@ttl_cache(ttl=300)
+def fetch_metadata(
+    match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse
+) -> bytes:
+    meta_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
+    metafile = requests.get(meta_url)
+    metafile.raise_for_status()
+    metafile = metafile.content
+    return metafile
 
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)

@@ -2,7 +2,6 @@ import logging
 import os
 from typing import Literal
 
-import requests
 from cachetools.func import ttl_cache
 from fastapi import APIRouter
 from starlette.requests import Request
@@ -23,6 +22,7 @@ from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
     fetch_active_matches,
+    fetch_metadata,
     fetch_patch_notes,
     get_match_salts_from_db,
     get_match_salts_from_steam,
@@ -300,10 +300,7 @@ def get_raw_metadata_file(
             [RateLimit(limit=3000, period=3600)],
         )
         salts = get_match_salts_from_steam(match_id)
-    meta_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
-    metafile = requests.get(meta_url)
-    metafile.raise_for_status()
-    metafile = metafile.content
+    metafile = fetch_metadata(match_id, salts)
     s3.put_object(
         Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
     )
