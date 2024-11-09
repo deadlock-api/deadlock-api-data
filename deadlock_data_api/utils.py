@@ -1,5 +1,4 @@
 import logging
-import os
 import uuid
 from base64 import b64decode, b64encode
 from typing import TypeVar
@@ -14,26 +13,24 @@ from google.protobuf.message import Message
 from starlette.requests import Request
 from starlette.status import HTTP_403_FORBIDDEN
 
+from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import postgres_conn
 
 LOGGER = logging.getLogger(__name__)
 
-DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
-WEBHOOK = DiscordWebhook(url=DISCORD_WEBHOOK_URL) if DISCORD_WEBHOOK_URL else None
-STEAM_PROXY_URL = os.environ.get("STEAM_PROXY_URL")
-STEAM_PROXY_API_TOKEN = os.environ.get("STEAM_PROXY_API_TOKEN")
 STEAM_ID_64_IDENT = 76561197960265728
 
 
 def send_webhook_message(message: str):
-    if WEBHOOK is None:
+    if not CONFIG.discord_webhook_url:
         LOGGER.warning("No Discord webhook URL provided")
+        return
+    webhook = DiscordWebhook(url=CONFIG.discord_webhook_url, content=message)
     LOGGER.info(f"Sending webhook message: {message}")
-    WEBHOOK.content = message
-    WEBHOOK.execute()
+    webhook.execute()
 
 
-def is_valid_uuid(value: str) -> bool:
+def is_valid_uuid(value: str | None) -> bool:
     if value is None:
         return False
     try:
@@ -60,9 +57,12 @@ def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
             LOGGER.warning(f"Failed to call Steam proxy: {e}")
             if i == MAX_RETRIES - 1:
                 raise
+    raise RuntimeError("steam proxy retry raise invariant broken: - should never hit this point")
 
 
 def call_steam_proxy_raw(msg_type, msg):
+    assert CONFIG.steam_proxy, "SteamProxyConfig must be configured to call the proxy"
+
     msg_data = b64encode(msg.SerializeToString()).decode("utf-8")
     body = {
         "messageType": msg_type,
@@ -74,9 +74,9 @@ def call_steam_proxy_raw(msg_type, msg):
         "data": msg_data,
     }
     response = requests.post(
-        STEAM_PROXY_URL,
+        CONFIG.steam_proxy.url,
         json=body,
-        headers={"Authorization": f"Bearer {STEAM_PROXY_API_TOKEN}"},
+        headers={"Authorization": f"Bearer {CONFIG.steam_proxy.api_token}"},
     )
     response.raise_for_status()
     data = response.json()["data"]
@@ -111,9 +111,7 @@ class APIKeyHeaderOrQuery(APIKeyBase):
         header_api_key = request.headers.get(self.header_model.name)
         if not query_api_key and not header_api_key:
             if self.auto_error:
-                raise HTTPException(
-                    status_code=HTTP_403_FORBIDDEN, detail="Not authenticated"
-                )
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
             else:
                 return None
         return query_api_key or header_api_key
@@ -149,9 +147,13 @@ async def get_data_api_key(api_key: str = Security(api_key_param)):
     return api_key
 
 
-def validate_steam_id(steam_id: int | str | None) -> int | None:
-    if steam_id is None:
+def validate_steam_id_optional(steam_id: int | str | None) -> int | None:
+    if not steam_id:
         return None
+    return validate_steam_id(steam_id)
+
+
+def validate_steam_id(steam_id: int | str) -> int:
     try:
         steam_id = int(steam_id)
         if steam_id >= STEAM_ID_64_IDENT:
@@ -163,3 +165,29 @@ def validate_steam_id(steam_id: int | str | None) -> int | None:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+T = TypeVar("T")  # Generic type variable
+
+
+def notnone(value: T | None, message: str = "Value cannot be None") -> T:
+    """
+    Asserts that a value is not None and returns it with proper typing.
+
+    Args:
+        value: The value to check
+        message: Custom error message for when assertion fails
+
+    Returns:
+        The input value if it's not None
+
+    Raises:
+        AssertionError: If the value is None
+
+    Examples:
+        >>> x: str | None = get_optional_string()
+        >>> validated_x: str = assert_not_none(x)
+    """
+    if value is None:
+        raise AssertionError(message)
+    return value

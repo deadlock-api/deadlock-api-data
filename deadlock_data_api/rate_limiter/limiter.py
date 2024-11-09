@@ -1,6 +1,6 @@
 import logging
-import os
 import time
+from typing import Any
 
 from cachetools.func import ttl_cache
 from fastapi import HTTPException
@@ -8,13 +8,13 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from deadlock_data_api import utils
-from deadlock_data_api.globs import ENFORCE_RATE_LIMITS, postgres_conn, redis_conn
+from deadlock_data_api.conf import CONFIG
+from deadlock_data_api.globs import postgres_conn, redis_conn
 from deadlock_data_api.rate_limiter.models import RateLimit, RateLimitStatus
 
 LOGGER = logging.getLogger(__name__)
 
 MAX_TTL_SECONDS = 60 * 60  # 1 hour
-EMERGENCY_MODE = os.environ.get("EMERGENCY_MODE", "false").lower() == "true"
 
 
 def apply_limits(
@@ -25,9 +25,10 @@ def apply_limits(
     key_default_limits: list[RateLimit] | None = None,
     global_limits: list[RateLimit] | None = None,
 ):
+    assert request.client is not None, "Invariant: `request.client` must be set"
     ip = request.headers.get("CF-Connecting-IP", request.client.host)
     api_key = request.headers.get("X-API-Key", request.query_params.get("api_key"))
-    if api_key is None and EMERGENCY_MODE:
+    if api_key is None and CONFIG.emergency_mode:
         raise HTTPException(
             status_code=503,
             detail="API key required in emergency mode",
@@ -44,15 +45,13 @@ def apply_limits(
     prefix = ip
     if api_key:
         prefix = api_key
-        limits = (
-            get_extra_api_key_limits(api_key, request.url.path) or key_default_limits
-        )
+        limits = get_extra_api_key_limits(api_key, request.url.path) or key_default_limits
     if not limits:
         limits = ip_limits
     increment_key(f"{prefix}:{key}")
-    status = [limit_by_key(f"{prefix}:{key}", l) for l in limits]
+    status = [limit_by_key(f"{prefix}:{key}", limit) for limit in limits]
     if global_limits:
-        status += [limit_by_key(key, l) for l in global_limits]
+        status += [limit_by_key(key, limit) for limit in global_limits]
     for s in status:
         LOGGER.info(
             f"count: {s.count}, "
@@ -61,7 +60,7 @@ def apply_limits(
             f"remaining: {s.remaining}, "
             f"next_request: {s.next_request_in}"
         )
-        if ENFORCE_RATE_LIMITS:
+        if CONFIG.enforce_rate_limits:
             try:
                 s.raise_for_limit()
             except HTTPException as e:
@@ -78,10 +77,7 @@ def get_extra_api_key_limits(api_key: str, path: str) -> list[RateLimit]:
             "SELECT rate_limit, rate_period, path FROM api_key_limits WHERE key = %s AND path = %s",
             (api_key, path),
         )
-        return [
-            RateLimit(limit=r[0], period=r[1].seconds, path=r[2])
-            for r in cursor.fetchall()
-        ]
+        return [RateLimit(limit=r[0], period=r[1].seconds, path=r[2]) for r in cursor.fetchall()]
 
 
 def increment_key(key: str):
@@ -96,8 +92,12 @@ def increment_key(key: str):
 def limit_by_key(key: str, rate_limit: RateLimit) -> RateLimitStatus:
     LOGGER.debug(f"Checking rate limit: {key=} {rate_limit=}")
     current_time = float(time.time())
-    result = redis_conn().zrange(
-        key, current_time - rate_limit.period, current_time, byscore=True
+
+    result: list[Any] = redis_conn().zrange(
+        key,
+        current_time - rate_limit.period,  # type: ignore[reportArgumentType] => redis-py doesn't have proper typing for score args
+        current_time,  # type: ignore[reportArgumentType] => redis-py doesn't have proper typing for score args
+        byscore=True,
     )
     times = list(map(float, result))
     return RateLimitStatus(

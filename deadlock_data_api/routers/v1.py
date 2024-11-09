@@ -19,6 +19,7 @@ from valveprotos_py.citadel_gcmessages_common_pb2 import (
 )
 
 from deadlock_data_api import utils
+from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import CH_POOL, redis_conn, s3_conn
 from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
@@ -90,17 +91,11 @@ def get_builds(
     response_model_exclude_none=True,
     summary="Rate Limit 100req/s",
 )
-def get_build(
-    req: Request, res: Response, build_id: int, version: int | None = None
-) -> Build:
+def get_build(req: Request, res: Response, build_id: int, version: int | None = None) -> Build:
     LOGGER.info("get_build")
     limiter.apply_limits(req, res, "/v1/builds/{id}", [RateLimit(limit=100, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return (
-        load_build(build_id)
-        if version is None
-        else load_build_version(build_id, version)
-    )
+    return load_build(build_id) if version is None else load_build_version(build_id, version)
 
 
 @router.get(
@@ -164,9 +159,7 @@ def get_builds_by_author_id(
         [RateLimit(limit=100, period=1)],
     )
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_author(
-        author_id, start, limit, sort_by, sort_direction, only_latest
-    )
+    return load_builds_by_author(author_id, start, limit, sort_by, sort_direction, only_latest)
 
 
 @router.get(
@@ -178,13 +171,11 @@ def get_active_matches(
     req: Request, res: Response, account_id: int | None = None
 ) -> list[ActiveMatch]:
     LOGGER.info("get_active_matches")
-    limiter.apply_limits(
-        req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)]
-    )
+    limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
     last_modified = os.path.getmtime("active_matches.json")
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
     res.headers["Last-Updated"] = str(int(last_modified))
-    account_id = utils.validate_steam_id(account_id)
+    account_id = utils.validate_steam_id_optional(account_id)
 
     def has_player(am: ActiveMatch, account_id: int) -> bool:
         for p in am.players:
@@ -192,11 +183,7 @@ def get_active_matches(
                 return True
         return False
 
-    return [
-        a
-        for a in fetch_active_matches()
-        if account_id is None or has_player(a, account_id)
-    ]
+    return [a for a in fetch_active_matches() if account_id is None or has_player(a, account_id)]
 
 
 @router.get(
@@ -299,7 +286,7 @@ def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Respons
     except Exception as e:
         LOGGER.warning(f"Failed to get metadata from redis: {e}")
 
-    bucket = os.environ.get("S3_BUCKET_NAME", "hexe")
+    bucket = CONFIG.s3.meta_file_bucket_name
     key = f"processed/metadata/{match_id}.meta.bz2"
     object_exists = True
     try:
@@ -388,5 +375,7 @@ def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
             [RateLimit(limit=3000, period=3600)],
         )
         salts = get_match_salts_from_steam(match_id, True)
-    demo_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
+    demo_url = (
+        f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
+    )
     return {"demo_url": demo_url}

@@ -6,7 +6,7 @@ repos:
   - id: yamlfmt
     args: [--mapping, '2', --sequence, '2', --offset, '0', --width, '92', --implicit_start, --preserve-quotes]
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.6.0
+  rev: v5.0.0
   hooks:
   - id: fix-byte-order-marker
   - id: end-of-file-fixer
@@ -14,28 +14,16 @@ repos:
   - id: mixed-line-ending
   - id: pretty-format-json
     args: [--autofix]
-- repo: https://github.com/asottile/pyupgrade
-  rev: v3.17.0
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.7.3
   hooks:
-  - id: pyupgrade
-    args: [--py311-plus]
-- repo: https://github.com/PyCQA/autoflake
-  rev: v2.3.1
-  hooks:
-  - id: autoflake
-- repo: https://github.com/PyCQA/isort
-  rev: 5.13.2
-  hooks:
-  - id: isort
-    args: [--profile, black, --filter-files]
-- repo: https://github.com/ambv/black
-  rev: 24.8.0
-  hooks:
-  - id: black
-
-        # Hooks for validation
+  # Run the linter.
+  - id: ruff
+  # Run the formatter.
+  - id: ruff-format
+# Hooks for validation
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.6.0
+  rev: v5.0.0
   hooks:
   - id: check-merge-conflict
   - id: check-case-conflict
@@ -58,11 +46,3 @@ repos:
     types: ["dockerfile"]
     files: '(^Dockerfile$)|(\.Dockerfile$)'
     entry: ghcr.io/hadolint/hadolint hadolint --ignore DL3006 --ignore DL3008 --ignore DL3013
-- repo: https://github.com/python-poetry/poetry
-  rev: '1.8.0'
-  hooks:
-  - id: poetry-check
-  - id: poetry-lock
-  - id: poetry-export
-    args: ["-f", "requirements.txt", "--without-hashes"]
-  - id: poetry-install

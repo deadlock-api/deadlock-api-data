@@ -2,6 +2,8 @@ from clickhouse_driver import Client
 from pydantic import BaseModel, ConfigDict, computed_field
 from valveprotos_py.citadel_gcmessages_client_pb2 import CMsgCitadelProfileCard
 
+from deadlock_data_api.utils import notnone
+
 
 class PlayerCardSlotHero(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -45,14 +47,10 @@ class PlayerCardSlot(BaseModel):
         return cls(
             slot_id=msg.slot_id if hasattr(msg, "slot_id") else None,
             hero=(
-                PlayerCardSlotHero.from_msg(msg.hero)
-                if hasattr(msg, "hero") and msg.hero
-                else None
+                PlayerCardSlotHero.from_msg(msg.hero) if hasattr(msg, "hero") and msg.hero else None
             ),
             stat=(
-                PlayerCardSlotStat.from_msg(msg.stat)
-                if hasattr(msg, "stat") and msg.stat
-                else None
+                PlayerCardSlotStat.from_msg(msg.stat) if hasattr(msg, "stat") and msg.stat else None
             ),
         )
 
@@ -67,20 +65,12 @@ class PlayerCard(BaseModel):
     @computed_field
     @property
     def ranked_rank(self) -> int | None:
-        return (
-            self.ranked_badge_level // 10
-            if self.ranked_badge_level is not None
-            else None
-        )
+        return self.ranked_badge_level // 10 if self.ranked_badge_level is not None else None
 
     @computed_field
     @property
     def ranked_subrank(self) -> int | None:
-        return (
-            self.ranked_badge_level % 10
-            if self.ranked_badge_level is not None
-            else None
-        )
+        return self.ranked_badge_level % 10 if self.ranked_badge_level is not None else None
 
     @classmethod
     def from_msg(cls, msg: CMsgCitadelProfileCard) -> "PlayerCard":
@@ -92,17 +82,17 @@ class PlayerCard(BaseModel):
 
     def store_clickhouse(self, client: Client, account_id: int):
         client.execute(
-            f"INSERT INTO player_card (* EXCEPT(created_at)) VALUES",
+            "INSERT INTO player_card (* EXCEPT(created_at)) VALUES",
             [
                 {
                     "account_id": account_id,
                     "ranked_badge_level": self.ranked_badge_level,
                     "slots_slots_id": [slot.slot_id for slot in self.slots],
-                    "slots_hero_id": [slot.hero.hero_id for slot in self.slots],
-                    "slots_hero_kills": [slot.hero.hero_kills for slot in self.slots],
-                    "slots_hero_wins": [slot.hero.hero_wins for slot in self.slots],
-                    "slots_stat_id": [slot.stat.stat_id for slot in self.slots],
-                    "slots_stat_score": [slot.stat.stat_score for slot in self.slots],
+                    "slots_hero_id": [notnone(slot.hero).hero_id for slot in self.slots],
+                    "slots_hero_kills": [notnone(slot.hero).hero_kills for slot in self.slots],
+                    "slots_hero_wins": [notnone(slot.hero).hero_wins for slot in self.slots],
+                    "slots_stat_id": [notnone(slot.stat).stat_id for slot in self.slots],
+                    "slots_stat_score": [notnone(slot.stat).stat_score for slot in self.slots],
                 }
             ],
             types_check=True,
