@@ -1,7 +1,7 @@
 import logging
 import uuid
 from base64 import b64decode, b64encode
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 import requests
 from cachetools.func import ttl_cache
@@ -170,7 +170,7 @@ def validate_steam_id(steam_id: int | str) -> int:
 T = TypeVar("T")  # Generic type variable
 
 
-def notnone(value: Optional[T], message: str = "Value cannot be None") -> T:
+def notnone(value: T | None, message: str = "Value cannot be None") -> T:
     """
     Asserts that a value is not None and returns it with proper typing.
 
