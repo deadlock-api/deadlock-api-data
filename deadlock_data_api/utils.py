@@ -19,21 +19,21 @@ from deadlock_data_api.globs import postgres_conn
 LOGGER = logging.getLogger(__name__)
 
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
-WEBHOOK = DiscordWebhook(url=DISCORD_WEBHOOK_URL) if DISCORD_WEBHOOK_URL else None
 STEAM_PROXY_URL = os.environ.get("STEAM_PROXY_URL")
 STEAM_PROXY_API_TOKEN = os.environ.get("STEAM_PROXY_API_TOKEN")
 STEAM_ID_64_IDENT = 76561197960265728
 
 
 def send_webhook_message(message: str):
-    if WEBHOOK is None:
+    if not DISCORD_WEBHOOK_URL:
         LOGGER.warning("No Discord webhook URL provided")
+        return
+    webhook = DiscordWebhook(url=DISCORD_WEBHOOK_URL, content=message)
     LOGGER.info(f"Sending webhook message: {message}")
-    WEBHOOK.content = message
-    WEBHOOK.execute()
+    webhook.execute()
 
 
-def is_valid_uuid(value: str) -> bool:
+def is_valid_uuid(value: str | None) -> bool:
     if value is None:
         return False
     try:
@@ -60,9 +60,14 @@ def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
             LOGGER.warning(f"Failed to call Steam proxy: {e}")
             if i == MAX_RETRIES - 1:
                 raise
+    raise RuntimeError(
+        "steam proxy retry raise invariant broken: - should never hit this point"
+    )
 
 
 def call_steam_proxy_raw(msg_type, msg):
+    assert STEAM_PROXY_URL, "STEAM_PROXY_URL must be defined to call the proxy"
+
     msg_data = b64encode(msg.SerializeToString()).decode("utf-8")
     body = {
         "messageType": msg_type,
