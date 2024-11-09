@@ -25,8 +25,19 @@ dependencies = [
     "xmltodict>=0.14.2",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.7.3",
+]
+
 [tool.uv.sources]
 valveprotos-py = { git = "https://github.com/deadlock-api/valveprotos-py" }
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+extend-select = [
+    "I", # isort-like rules
+    "UP", # pyupgrade-like rules
+]
