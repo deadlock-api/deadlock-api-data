@@ -94,9 +94,7 @@ def get_match_salts_from_steam(
     return msg
 
 
-def fetch_metadata(
-    match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse
-) -> bytes:
+def fetch_metadata(match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse) -> bytes:
     meta_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
     metafile = requests.get(meta_url)
     metafile.raise_for_status()
@@ -151,9 +149,7 @@ def load_builds(
         if start is None:
             start = 0
         if limit is None:
-            raise HTTPException(
-                status_code=400, detail="Start cannot be provided without limit"
-            )
+            raise HTTPException(status_code=400, detail="Start cannot be provided without limit")
         if limit != -1:
             query += " LIMIT %s OFFSET %s"
             args += [limit, start]
@@ -170,9 +166,7 @@ def load_builds_by_hero(
     hero_id: int,
     start: int | None = None,
     limit: int | None = 100,
-    sort_by: (
-        Literal["favorites", "ignores", "reports", "updated_at"] | None
-    ) = "favorites",
+    sort_by: (Literal["favorites", "ignores", "reports", "updated_at"] | None) = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
     search_name: str | None = None,
     search_description: str | None = None,
@@ -215,9 +209,7 @@ def load_builds_by_hero(
         if start is None:
             start = 0
         if limit is None:
-            raise HTTPException(
-                status_code=400, detail="Start cannot be provided without limit"
-            )
+            raise HTTPException(status_code=400, detail="Start cannot be provided without limit")
         if limit != -1:
             query += " LIMIT %s OFFSET %s"
             args += [limit, start]
@@ -266,9 +258,7 @@ def load_builds_by_author(
         if start is None:
             start = 0
         if limit is None:
-            raise HTTPException(
-                status_code=400, detail="Start cannot be provided without limit"
-            )
+            raise HTTPException(status_code=400, detail="Start cannot be provided without limit")
         if limit != -1:
             query += " LIMIT %s OFFSET %s"
             args += [limit, start]
@@ -283,9 +273,7 @@ def load_builds_by_author(
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_build(build_id: int) -> Build:
     LOGGER.debug("load_build")
-    query = (
-        "SELECT data FROM hero_builds WHERE build_id = %s ORDER BY version DESC LIMIT 1"
-    )
+    query = "SELECT data FROM hero_builds WHERE build_id = %s ORDER BY version DESC LIMIT 1"
     conn = postgres_conn()
     with conn.cursor() as cursor:
         cursor.execute(query, (build_id,))

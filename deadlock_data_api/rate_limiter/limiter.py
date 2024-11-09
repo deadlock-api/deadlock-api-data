@@ -45,9 +45,7 @@ def apply_limits(
     prefix = ip
     if api_key:
         prefix = api_key
-        limits = (
-            get_extra_api_key_limits(api_key, request.url.path) or key_default_limits
-        )
+        limits = get_extra_api_key_limits(api_key, request.url.path) or key_default_limits
     if not limits:
         limits = ip_limits
     increment_key(f"{prefix}:{key}")
@@ -79,10 +77,7 @@ def get_extra_api_key_limits(api_key: str, path: str) -> list[RateLimit]:
             "SELECT rate_limit, rate_period, path FROM api_key_limits WHERE key = %s AND path = %s",
             (api_key, path),
         )
-        return [
-            RateLimit(limit=r[0], period=r[1].seconds, path=r[2])
-            for r in cursor.fetchall()
-        ]
+        return [RateLimit(limit=r[0], period=r[1].seconds, path=r[2]) for r in cursor.fetchall()]
 
 
 def increment_key(key: str):

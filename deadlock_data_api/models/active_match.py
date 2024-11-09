@@ -35,20 +35,12 @@ class ActiveMatch(BaseModel):
     @computed_field
     @property
     def ranked_rank(self) -> int | None:
-        return (
-            self.ranked_badge_level // 10
-            if self.ranked_badge_level is not None
-            else None
-        )
+        return self.ranked_badge_level // 10 if self.ranked_badge_level is not None else None
 
     @computed_field
     @property
     def ranked_subrank(self) -> int | None:
-        return (
-            self.ranked_badge_level % 10
-            if self.ranked_badge_level is not None
-            else None
-        )
+        return self.ranked_badge_level % 10 if self.ranked_badge_level is not None else None
 
     @classmethod
     def from_msg(cls, msg: CMsgDevMatchInfo) -> "ActiveMatch":

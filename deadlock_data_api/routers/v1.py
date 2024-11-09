@@ -91,17 +91,11 @@ def get_builds(
     response_model_exclude_none=True,
     summary="Rate Limit 100req/s",
 )
-def get_build(
-    req: Request, res: Response, build_id: int, version: int | None = None
-) -> Build:
+def get_build(req: Request, res: Response, build_id: int, version: int | None = None) -> Build:
     LOGGER.info("get_build")
     limiter.apply_limits(req, res, "/v1/builds/{id}", [RateLimit(limit=100, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return (
-        load_build(build_id)
-        if version is None
-        else load_build_version(build_id, version)
-    )
+    return load_build(build_id) if version is None else load_build_version(build_id, version)
 
 
 @router.get(
@@ -165,9 +159,7 @@ def get_builds_by_author_id(
         [RateLimit(limit=100, period=1)],
     )
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_author(
-        author_id, start, limit, sort_by, sort_direction, only_latest
-    )
+    return load_builds_by_author(author_id, start, limit, sort_by, sort_direction, only_latest)
 
 
 @router.get(
@@ -179,9 +171,7 @@ def get_active_matches(
     req: Request, res: Response, account_id: int | None = None
 ) -> list[ActiveMatch]:
     LOGGER.info("get_active_matches")
-    limiter.apply_limits(
-        req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)]
-    )
+    limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
     last_modified = os.path.getmtime("active_matches.json")
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
     res.headers["Last-Updated"] = str(int(last_modified))
@@ -193,11 +183,7 @@ def get_active_matches(
                 return True
         return False
 
-    return [
-        a
-        for a in fetch_active_matches()
-        if account_id is None or has_player(a, account_id)
-    ]
+    return [a for a in fetch_active_matches() if account_id is None or has_player(a, account_id)]
 
 
 @router.get(
@@ -389,5 +375,7 @@ def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
             [RateLimit(limit=3000, period=3600)],
         )
         salts = get_match_salts_from_steam(match_id, True)
-    demo_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
+    demo_url = (
+        f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
+    )
     return {"demo_url": demo_url}
