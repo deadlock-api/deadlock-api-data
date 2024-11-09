@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Any
 
 from cachetools.func import ttl_cache
 from fastapi import HTTPException
@@ -24,6 +25,7 @@ def apply_limits(
     key_default_limits: list[RateLimit] | None = None,
     global_limits: list[RateLimit] | None = None,
 ):
+    assert request.client is not None, "Invariant: `request.client` must be set"
     ip = request.headers.get("CF-Connecting-IP", request.client.host)
     api_key = request.headers.get("X-API-Key", request.query_params.get("api_key"))
     if api_key is None and CONFIG.emergency_mode:
@@ -95,8 +97,12 @@ def increment_key(key: str):
 def limit_by_key(key: str, rate_limit: RateLimit) -> RateLimitStatus:
     LOGGER.debug(f"Checking rate limit: {key=} {rate_limit=}")
     current_time = float(time.time())
-    result = redis_conn().zrange(
-        key, current_time - rate_limit.period, current_time, byscore=True
+
+    result: list[Any] = redis_conn().zrange(
+        key,
+        current_time - rate_limit.period,  # type: ignore[reportArgumentType] => redis-py doesn't have proper typing for score args
+        current_time,  # type: ignore[reportArgumentType] => redis-py doesn't have proper typing for score args
+        byscore=True,
     )
     times = list(map(float, result))
     return RateLimitStatus(
