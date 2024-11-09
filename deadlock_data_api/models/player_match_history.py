@@ -55,9 +55,7 @@ class PlayerMatchHistoryEntry(BaseModel):
         )
 
     @staticmethod
-    def store_clickhouse(
-        client: Client, account_id: int, entries: list["PlayerMatchHistoryEntry"]
-    ):
+    def store_clickhouse(client: Client, account_id: int, entries: list["PlayerMatchHistoryEntry"]):
         client.execute(
             "INSERT INTO player_match_history (* EXCEPT(created_at)) VALUES",
             [

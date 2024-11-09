@@ -44,9 +44,7 @@ class BuildHeroDetailsAbilityOrderCurrencyChange(BaseModel):
 class BuildHeroDetailsAbilityOrder(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    currency_changes: list[BuildHeroDetailsAbilityOrderCurrencyChange] | None = Field(
-        None
-    )
+    currency_changes: list[BuildHeroDetailsAbilityOrderCurrencyChange] | None = Field(None)
 
 
 class BuildHeroDetails(BaseModel):

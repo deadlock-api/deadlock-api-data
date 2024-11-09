@@ -27,3 +27,6 @@ dependencies = [
 
 [tool.uv.sources]
 valveprotos-py = { git = "https://github.com/deadlock-api/valveprotos-py" }
+
+[tool.ruff]
+line-length = 100
