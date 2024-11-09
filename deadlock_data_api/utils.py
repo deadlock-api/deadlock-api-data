@@ -1,7 +1,7 @@
 import logging
 import uuid
 from base64 import b64decode, b64encode
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 import requests
 from cachetools.func import ttl_cache
@@ -151,9 +151,13 @@ async def get_data_api_key(api_key: str = Security(api_key_param)):
     return api_key
 
 
-def validate_steam_id(steam_id: int | str | None) -> int | None:
-    if steam_id is None:
+def validate_steam_id_optional(steam_id: int | str | None) -> int | None:
+    if not steam_id:
         return None
+    return validate_steam_id(steam_id)
+
+
+def validate_steam_id(steam_id: int | str) -> int:
     try:
         steam_id = int(steam_id)
         if steam_id >= STEAM_ID_64_IDENT:
@@ -165,3 +169,29 @@ def validate_steam_id(steam_id: int | str | None) -> int | None:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+T = TypeVar("T")  # Generic type variable
+
+
+def notnone(value: Optional[T], message: str = "Value cannot be None") -> T:
+    """
+    Asserts that a value is not None and returns it with proper typing.
+
+    Args:
+        value: The value to check
+        message: Custom error message for when assertion fails
+
+    Returns:
+        The input value if it's not None
+
+    Raises:
+        AssertionError: If the value is None
+
+    Examples:
+        >>> x: str | None = get_optional_string()
+        >>> validated_x: str = assert_not_none(x)
+    """
+    if value is None:
+        raise AssertionError(message)
+    return value

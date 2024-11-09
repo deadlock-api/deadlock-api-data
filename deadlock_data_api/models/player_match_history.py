@@ -59,7 +59,7 @@ class PlayerMatchHistoryEntry(BaseModel):
         client: Client, account_id: int, entries: list["PlayerMatchHistoryEntry"]
     ):
         client.execute(
-            f"INSERT INTO player_match_history (* EXCEPT(created_at)) VALUES",
+            "INSERT INTO player_match_history (* EXCEPT(created_at)) VALUES",
             [
                 (
                     account_id,

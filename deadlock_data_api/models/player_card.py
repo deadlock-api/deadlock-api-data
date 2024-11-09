@@ -2,6 +2,8 @@ from clickhouse_driver import Client
 from pydantic import BaseModel, ConfigDict, computed_field
 from valveprotos_py.citadel_gcmessages_client_pb2 import CMsgCitadelProfileCard
 
+from deadlock_data_api.utils import notnone
+
 
 class PlayerCardSlotHero(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -92,17 +94,27 @@ class PlayerCard(BaseModel):
 
     def store_clickhouse(self, client: Client, account_id: int):
         client.execute(
-            f"INSERT INTO player_card (* EXCEPT(created_at)) VALUES",
+            "INSERT INTO player_card (* EXCEPT(created_at)) VALUES",
             [
                 {
                     "account_id": account_id,
                     "ranked_badge_level": self.ranked_badge_level,
                     "slots_slots_id": [slot.slot_id for slot in self.slots],
-                    "slots_hero_id": [slot.hero.hero_id for slot in self.slots],
-                    "slots_hero_kills": [slot.hero.hero_kills for slot in self.slots],
-                    "slots_hero_wins": [slot.hero.hero_wins for slot in self.slots],
-                    "slots_stat_id": [slot.stat.stat_id for slot in self.slots],
-                    "slots_stat_score": [slot.stat.stat_score for slot in self.slots],
+                    "slots_hero_id": [
+                        notnone(slot.hero).hero_id for slot in self.slots
+                    ],
+                    "slots_hero_kills": [
+                        notnone(slot.hero).hero_kills for slot in self.slots
+                    ],
+                    "slots_hero_wins": [
+                        notnone(slot.hero).hero_wins for slot in self.slots
+                    ],
+                    "slots_stat_id": [
+                        notnone(slot.stat).stat_id for slot in self.slots
+                    ],
+                    "slots_stat_score": [
+                        notnone(slot.stat).stat_score for slot in self.slots
+                    ],
                 }
             ],
             types_check=True,
