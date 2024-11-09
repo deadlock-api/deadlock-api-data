@@ -121,7 +121,6 @@ def load_builds(
     only_latest: bool = False,
     language: int | None = None,
 ) -> list[Build]:
-    LOGGER.debug("load_builds")
     query = """
     WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
                           FROM hero_builds
@@ -181,7 +180,6 @@ def load_builds_by_hero(
     only_latest: bool = False,
     language: int | None = None,
 ) -> list[Build]:
-    LOGGER.debug("load_builds_by_hero")
     query = """
     WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
                           FROM hero_builds
@@ -238,7 +236,6 @@ def load_builds_by_author(
     sort_direction: Literal["asc", "desc"] = "desc",
     only_latest: bool = False,
 ) -> list[Build]:
-    LOGGER.debug("load_builds_by_author")
     query = """
     WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
                           FROM hero_builds
@@ -280,7 +277,6 @@ def load_builds_by_author(
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_build(build_id: int) -> Build:
-    LOGGER.debug("load_build")
     query = "SELECT data FROM hero_builds WHERE build_id = %s ORDER BY version DESC LIMIT 1"
     conn = postgres_conn()
     with conn.cursor() as cursor:
@@ -293,7 +289,6 @@ def load_build(build_id: int) -> Build:
 
 @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
 def load_build_version(build_id: int, version: int) -> Build:
-    LOGGER.debug("load_build_version")
     query = "SELECT data FROM hero_builds WHERE build_id = %s AND version = %s"
     conn = postgres_conn()
     with conn.cursor() as cursor:
@@ -306,7 +301,6 @@ def load_build_version(build_id: int, version: int) -> Build:
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
 def fetch_active_matches_raw() -> bytes:
-    LOGGER.debug("fetch_active_matches")
     try:
         msg = call_steam_proxy_raw(
             k_EMsgClientToGCGetActiveMatches, CMsgClientToGCGetActiveMatches()
@@ -320,7 +314,6 @@ def fetch_active_matches_raw() -> bytes:
 
 @ttl_cache(ttl=30 * 60)
 def fetch_patch_notes() -> list[PatchNote]:
-    LOGGER.debug("fetch_patch_notes")
     rss_url = "https://forums.playdeadlock.com/forums/changelog.10/index.rss"
     response = requests.get(rss_url)
     items = xmltodict.parse(response.text)["rss"]["channel"]["item"]

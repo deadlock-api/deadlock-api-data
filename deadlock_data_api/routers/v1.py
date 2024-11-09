@@ -54,7 +54,6 @@ router = APIRouter(prefix="/v1")
 
 @router.get("/patch-notes", summary="No Rate Limits")
 def get_patch_notes(res: Response):
-    LOGGER.info("get_patch_notes")
     res.headers["Cache-Control"] = f"public, max-age={30 * 60}"
     return fetch_patch_notes()
 
@@ -73,7 +72,6 @@ def get_builds(
     language: int | None = None,
 ) -> list[Build]:
     only_latest = only_latest or False
-    LOGGER.info("get_builds")
     limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=100, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_builds(
@@ -94,7 +92,6 @@ def get_builds(
     summary="Rate Limit 100req/s",
 )
 def get_build(req: Request, res: Response, build_id: int, version: int | None = None) -> Build:
-    LOGGER.info("get_build")
     limiter.apply_limits(req, res, "/v1/builds/{id}", [RateLimit(limit=100, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_build(build_id) if version is None else load_build_version(build_id, version)
@@ -119,7 +116,6 @@ def get_builds_by_hero_id(
     language: int | None = None,
 ) -> list[Build]:
     only_latest = only_latest or False
-    LOGGER.info("get_builds_by_hero_id")
     limiter.apply_limits(
         req, res, "/v1/builds/by-hero-id/{hero_id}", [RateLimit(limit=100, period=1)]
     )
@@ -153,7 +149,6 @@ def get_builds_by_author_id(
     only_latest: bool | None = None,
 ) -> list[Build]:
     only_latest = only_latest or False
-    LOGGER.info("get_builds_by_author_id")
     limiter.apply_limits(
         req,
         res,
@@ -170,7 +165,6 @@ def get_builds_by_author_id(
     summary="Updates every 20s | Rate Limit 100req/s, Shared Rate Limit with /active-matches",
 )
 def get_active_matches_raw(req: Request, res: Response) -> Response:
-    LOGGER.info("get_active_matches_raw")
     limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
     return Response(
         content=fetch_active_matches_raw(),
@@ -187,7 +181,6 @@ def get_active_matches_raw(req: Request, res: Response) -> Response:
 def get_active_matches(
     req: Request, res: Response, account_id: int | None = None
 ) -> list[ActiveMatch]:
-    LOGGER.info("get_active_matches")
     account_id = utils.validate_steam_id_optional(account_id)
 
     raw_active_matches = get_active_matches_raw(req, res).body
@@ -210,7 +203,6 @@ def player_rank(
     res: Response,
     account_id: int,
 ) -> PlayerCard:
-    LOGGER.info("player_rank")
     limiter.apply_limits(
         req,
         res,
@@ -244,7 +236,6 @@ def player_match_history(
     res: Response,
     account_id: int,
 ) -> list[PlayerMatchHistoryEntry]:
-    LOGGER.info("player_match_history")
     limiter.apply_limits(
         req,
         res,
