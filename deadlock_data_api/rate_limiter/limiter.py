@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 
 from cachetools.func import ttl_cache
@@ -8,13 +7,13 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from deadlock_data_api import utils
-from deadlock_data_api.globs import ENFORCE_RATE_LIMITS, postgres_conn, redis_conn
+from deadlock_data_api.conf import CONFIG
+from deadlock_data_api.globs import postgres_conn, redis_conn
 from deadlock_data_api.rate_limiter.models import RateLimit, RateLimitStatus
 
 LOGGER = logging.getLogger(__name__)
 
 MAX_TTL_SECONDS = 60 * 60  # 1 hour
-EMERGENCY_MODE = os.environ.get("EMERGENCY_MODE", "false").lower() == "true"
 
 
 def apply_limits(
@@ -27,7 +26,7 @@ def apply_limits(
 ):
     ip = request.headers.get("CF-Connecting-IP", request.client.host)
     api_key = request.headers.get("X-API-Key", request.query_params.get("api_key"))
-    if api_key is None and EMERGENCY_MODE:
+    if api_key is None and CONFIG.emergency_mode:
         raise HTTPException(
             status_code=503,
             detail="API key required in emergency mode",
@@ -61,7 +60,7 @@ def apply_limits(
             f"remaining: {s.remaining}, "
             f"next_request: {s.next_request_in}"
         )
-        if ENFORCE_RATE_LIMITS:
+        if CONFIG.enforce_rate_limits:
             try:
                 s.raise_for_limit()
             except HTTPException as e:

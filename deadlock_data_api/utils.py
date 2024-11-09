@@ -1,5 +1,4 @@
 import logging
-import os
 import uuid
 from base64 import b64decode, b64encode
 from typing import TypeVar
@@ -14,21 +13,19 @@ from google.protobuf.message import Message
 from starlette.requests import Request
 from starlette.status import HTTP_403_FORBIDDEN
 
+from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import postgres_conn
 
 LOGGER = logging.getLogger(__name__)
 
-DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
-STEAM_PROXY_URL = os.environ.get("STEAM_PROXY_URL")
-STEAM_PROXY_API_TOKEN = os.environ.get("STEAM_PROXY_API_TOKEN")
 STEAM_ID_64_IDENT = 76561197960265728
 
 
 def send_webhook_message(message: str):
-    if not DISCORD_WEBHOOK_URL:
+    if not CONFIG.discord_webhook_url:
         LOGGER.warning("No Discord webhook URL provided")
         return
-    webhook = DiscordWebhook(url=DISCORD_WEBHOOK_URL, content=message)
+    webhook = DiscordWebhook(url=CONFIG.discord_webhook_url, content=message)
     LOGGER.info(f"Sending webhook message: {message}")
     webhook.execute()
 
@@ -66,7 +63,7 @@ def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
 
 
 def call_steam_proxy_raw(msg_type, msg):
-    assert STEAM_PROXY_URL, "STEAM_PROXY_URL must be defined to call the proxy"
+    assert CONFIG.steam_proxy, "SteamProxyConfig must be configured to call the proxy"
 
     msg_data = b64encode(msg.SerializeToString()).decode("utf-8")
     body = {
@@ -79,9 +76,9 @@ def call_steam_proxy_raw(msg_type, msg):
         "data": msg_data,
     }
     response = requests.post(
-        STEAM_PROXY_URL,
+        CONFIG.steam_proxy.url,
         json=body,
-        headers={"Authorization": f"Bearer {STEAM_PROXY_API_TOKEN}"},
+        headers={"Authorization": f"Bearer {CONFIG.steam_proxy.api_token}"},
     )
     response.raise_for_status()
     data = response.json()["data"]
