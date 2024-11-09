@@ -188,6 +188,5 @@ def notnone(value: T | None, message: str = "Value cannot be None") -> T:
         >>> x: str | None = get_optional_string()
         >>> validated_x: str = assert_not_none(x)
     """
-    if value is None:
-        raise AssertionError(message)
+    assert value is not None, message
     return value

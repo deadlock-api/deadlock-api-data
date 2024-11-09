@@ -2,7 +2,7 @@ from clickhouse_driver import Client
 from pydantic import BaseModel, ConfigDict, computed_field
 from valveprotos_py.citadel_gcmessages_client_pb2 import CMsgCitadelProfileCard
 
-from deadlock_data_api.utils import notnone
+from deadlock_data_api import utils
 
 
 class PlayerCardSlotHero(BaseModel):
@@ -88,11 +88,15 @@ class PlayerCard(BaseModel):
                     "account_id": account_id,
                     "ranked_badge_level": self.ranked_badge_level,
                     "slots_slots_id": [slot.slot_id for slot in self.slots],
-                    "slots_hero_id": [notnone(slot.hero).hero_id for slot in self.slots],
-                    "slots_hero_kills": [notnone(slot.hero).hero_kills for slot in self.slots],
-                    "slots_hero_wins": [notnone(slot.hero).hero_wins for slot in self.slots],
-                    "slots_stat_id": [notnone(slot.stat).stat_id for slot in self.slots],
-                    "slots_stat_score": [notnone(slot.stat).stat_score for slot in self.slots],
+                    "slots_hero_id": [utils.notnone(slot.hero).hero_id for slot in self.slots],
+                    "slots_hero_kills": [
+                        utils.notnone(slot.hero).hero_kills for slot in self.slots
+                    ],
+                    "slots_hero_wins": [utils.notnone(slot.hero).hero_wins for slot in self.slots],
+                    "slots_stat_id": [utils.notnone(slot.stat).stat_id for slot in self.slots],
+                    "slots_stat_score": [
+                        utils.notnone(slot.stat).stat_score for slot in self.slots
+                    ],
                 }
             ],
             types_check=True,
