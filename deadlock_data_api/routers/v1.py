@@ -353,7 +353,7 @@ async def get_metadata(req: Request, res: Response, match_id: int) -> JSONRespon
     raw_metadata_decompressed = bz2.decompress(raw_metadata)
     metadata = CMsgMatchMetaData.FromString(raw_metadata_decompressed)
     match_contents = CMsgMatchMetaDataContents.FromString(metadata.match_details)
-    return JSONResponse(MessageToDict(match_contents))
+    return JSONResponse(MessageToDict(match_contents, preserving_proto_field_name=True))
 
 
 @router.get(
