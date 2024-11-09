@@ -1,9 +1,10 @@
 import bz2
 import logging
+from datetime import datetime
 from typing import Literal
 
 from cachetools.func import ttl_cache
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from google.protobuf.json_format import MessageToDict
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -32,6 +33,7 @@ from deadlock_data_api.routers.v1_utils import (
     fetch_patch_notes,
     get_match_salts_from_db,
     get_match_salts_from_steam,
+    get_match_start_time,
     get_player_match_history,
     load_build,
     load_build_version,
@@ -363,6 +365,11 @@ def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
     )
     salts = get_match_salts_from_db(match_id, True)
     if salts is None:
+        match_start_time = get_match_start_time(match_id)
+        if match_start_time is not None:
+            demo_retention = CONFIG.demo_retention_days * 24 * 60 * 60
+            if datetime.now() - match_start_time > demo_retention:
+                raise HTTPException(status_code=400, detail="Match is too old")
         limiter.apply_limits(
             req,
             res,

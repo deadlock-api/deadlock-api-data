@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Literal
 
 import requests
@@ -67,6 +68,16 @@ def get_match_salts_from_db(
                 metadata_salt=result[0], replay_salt=result[1], cluster_id=result[2]
             )
     return None
+
+
+@ttl_cache(ttl=60 * 60)
+def get_match_start_time(match_id: int) -> datetime | None:
+    with CH_POOL.get_client() as client:
+        result = client.execute(
+            "SELECT start_time FROM match_info WHERE match_id <= %(match_id)s ORDER BY match_id DESC LIMIT 1",
+            {"match_id": match_id},
+        )
+    return result[0][0] if result else None
 
 
 @ttl_cache(ttl=60 * 60)
