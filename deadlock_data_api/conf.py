@@ -97,9 +97,7 @@ def make_app_config_from_env() -> AppConfig:
 
     steam_proxy_conf = None
     if STEAM_PROXY_URL and STEAM_PROXY_API_TOKEN:
-        steam_proxy_conf = SteamProxyConfig(
-            url=STEAM_PROXY_URL, api_token=STEAM_PROXY_API_TOKEN
-        )
+        steam_proxy_conf = SteamProxyConfig(url=STEAM_PROXY_URL, api_token=STEAM_PROXY_API_TOKEN)
 
     app_conf = AppConfig(
         clickhouse=clickhouse_conf,

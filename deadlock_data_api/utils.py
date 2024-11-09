@@ -57,9 +57,7 @@ def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
             LOGGER.warning(f"Failed to call Steam proxy: {e}")
             if i == MAX_RETRIES - 1:
                 raise
-    raise RuntimeError(
-        "steam proxy retry raise invariant broken: - should never hit this point"
-    )
+    raise RuntimeError("steam proxy retry raise invariant broken: - should never hit this point")
 
 
 def call_steam_proxy_raw(msg_type, msg):
@@ -113,9 +111,7 @@ class APIKeyHeaderOrQuery(APIKeyBase):
         header_api_key = request.headers.get(self.header_model.name)
         if not query_api_key and not header_api_key:
             if self.auto_error:
-                raise HTTPException(
-                    status_code=HTTP_403_FORBIDDEN, detail="Not authenticated"
-                )
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
             else:
                 return None
         return query_api_key or header_api_key
