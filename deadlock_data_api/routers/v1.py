@@ -300,9 +300,10 @@ def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Respons
         object_exists = False
     if object_exists:
         obj = s3_conn().get_object(Bucket=bucket, Key=key)
-        redis_conn().set(f"metadata:{match_id}", obj["Body"], ex=4 * 60 * 60)
+        body = obj["Body"].read()
+        redis_conn().set(f"metadata:{match_id}", body, ex=4 * 60 * 60)
         return Response(
-            content=obj["Body"],
+            content=body,
             media_type="application/octet-stream",
             headers={
                 "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
