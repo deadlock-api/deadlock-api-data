@@ -344,10 +344,8 @@ def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Respons
 async def get_metadata(req: Request, res: Response, match_id: int) -> JSONResponse:
     raw_metadata = get_raw_metadata_file(req, res, match_id).body
     raw_metadata_decompressed = bz2.decompress(raw_metadata)
-    metadata = CMsgMatchMetaData()
-    metadata.ParseFromString(raw_metadata_decompressed)
-    match_contents = CMsgMatchMetaDataContents()
-    match_contents.ParseFromString(metadata.match_details)
+    metadata = CMsgMatchMetaData.FromString(raw_metadata_decompressed)
+    match_contents = CMsgMatchMetaDataContents.FromString(metadata.match_details)
     return JSONResponse(MessageToDict(match_contents))
 
 
