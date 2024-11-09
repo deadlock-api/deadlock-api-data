@@ -25,13 +25,13 @@ def s3_conn():
     )
 
 
-def redis_conn():
+def redis_conn(decode_responses: bool = True):
     return redis.Redis(
         host=CONFIG.redis.host,
         port=CONFIG.redis.port,
         password=CONFIG.redis.password,
         db=0,
-        decode_responses=True,
+        decode_responses=decode_responses,
     )
 
 

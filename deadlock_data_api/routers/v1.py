@@ -272,7 +272,7 @@ def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Respons
     )
     # check if redis has the metadata
     try:
-        meta = redis_conn().get(f"metadata:{match_id}")
+        meta = redis_conn(decode_responses=False).get(f"metadata:{match_id}")
         if meta is not None:
             return Response(
                 content=meta,
@@ -325,8 +325,8 @@ def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Respons
         LOGGER.error("Failed to upload metadata to s3")
     try:
         redis_conn().set(f"metadata:{match_id}", metafile, ex=4 * 60 * 60)
-    except Exception:
-        LOGGER.error("Failed to cache metadata to redis")
+    except Exception as e:
+        LOGGER.error(f"Failed to cache metadata to redis: {e}")
     return Response(
         content=metafile,
         media_type="application/octet-stream",
