@@ -60,7 +60,7 @@ def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R]) -> R:
     raise RuntimeError("steam proxy retry raise invariant broken: - should never hit this point")
 
 
-def call_steam_proxy_raw(msg_type, msg):
+def call_steam_proxy_raw(msg_type: int, msg: Message) -> bytes:
     assert CONFIG.steam_proxy, "SteamProxyConfig must be configured to call the proxy"
 
     msg_data = b64encode(msg.SerializeToString()).decode("utf-8")

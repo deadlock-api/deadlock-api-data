@@ -10,7 +10,6 @@ from fastapi import HTTPException
 from starlette.status import HTTP_404_NOT_FOUND
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgClientToGCGetActiveMatches,
-    CMsgClientToGCGetActiveMatchesResponse,
     CMsgClientToGCGetMatchHistory,
     CMsgClientToGCGetMatchHistoryResponse,
     CMsgClientToGCGetMatchMetaData,
@@ -21,7 +20,6 @@ from valveprotos_py.citadel_gcmessages_client_pb2 import (
 )
 
 from deadlock_data_api.globs import CH_POOL, postgres_conn
-from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.patch_note import PatchNote
 from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
@@ -307,18 +305,13 @@ def load_build_version(build_id: int, version: int) -> Build:
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
-def fetch_active_matches() -> list[ActiveMatch]:
+def fetch_active_matches_raw() -> bytes:
+    LOGGER.debug("fetch_active_matches")
     try:
-        LOGGER.debug("fetch_active_matches")
         msg = call_steam_proxy_raw(
             k_EMsgClientToGCGetActiveMatches, CMsgClientToGCGetActiveMatches()
         )
-        return [
-            ActiveMatch.from_msg(m)
-            for m in CMsgClientToGCGetActiveMatchesResponse.FromString(
-                snappy.decompress(msg[7:])
-            ).active_matches
-        ]
+        return snappy.decompress(msg[7:])
     except Exception:
         send_webhook_message("Failed to fetch active matches")
         LOGGER.exception("Failed to fetch active matches")

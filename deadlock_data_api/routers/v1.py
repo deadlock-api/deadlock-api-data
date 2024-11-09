@@ -10,6 +10,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
+    CMsgClientToGCGetActiveMatchesResponse,
     CMsgClientToGCGetProfileCard,
     k_EMsgClientToGCGetProfileCard,
 )
@@ -28,7 +29,7 @@ from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntr
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
-    fetch_active_matches,
+    fetch_active_matches_raw,
     fetch_metadata,
     fetch_patch_notes,
     get_match_salts_from_db,
@@ -164,25 +165,39 @@ def get_builds_by_author_id(
 
 
 @router.get(
+    "/raw-active-matches",
+    response_model_exclude_none=True,
+    summary="Updates every 20s | Rate Limit 100req/s, Shared Rate Limit with /active-matches",
+)
+def get_active_matches_raw(req: Request, res: Response) -> Response:
+    LOGGER.info("get_active_matches_raw")
+    limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
+    return Response(
+        content=fetch_active_matches_raw(),
+        media_type="application/octet-stream",
+        headers={"Cache-Control": f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"},
+    )
+
+
+@router.get(
     "/active-matches",
     response_model_exclude_none=True,
-    summary="Updates every 20s | Rate Limit 100req/s",
+    summary="Updates every 20s | Rate Limit 100req/s, Shared Rate Limit with /raw-active-matches",
 )
 def get_active_matches(
     req: Request, res: Response, account_id: int | None = None
 ) -> list[ActiveMatch]:
     LOGGER.info("get_active_matches")
-    limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
-    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
     account_id = utils.validate_steam_id_optional(account_id)
 
-    def has_player(am: ActiveMatch, account_id: int) -> bool:
-        for p in am.players:
-            if p.account_id == account_id:
-                return True
-        return False
+    raw_active_matches = get_active_matches_raw(req, res).body
+    msg = CMsgClientToGCGetActiveMatchesResponse.FromString(raw_active_matches)
 
-    return [a for a in fetch_active_matches() if account_id is None or has_player(a, account_id)]
+    return [
+        ActiveMatch.from_msg(am)
+        for am in msg.active_matches
+        if account_id is None or any(p.account_id == account_id for p in am.players)
+    ]
 
 
 @router.get(
