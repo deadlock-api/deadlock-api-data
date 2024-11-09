@@ -1,6 +1,6 @@
 import bz2
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Literal
 
 from cachetools.func import ttl_cache
@@ -367,8 +367,7 @@ def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
     if salts is None:
         match_start_time = get_match_start_time(match_id)
         if match_start_time is not None:
-            demo_retention = CONFIG.demo_retention_days * 24 * 60 * 60
-            if datetime.now() - match_start_time > demo_retention:
+            if datetime.now() - match_start_time > timedelta(days=CONFIG.demo_retention_days):
                 raise HTTPException(status_code=400, detail="Match is too old")
         limiter.apply_limits(
             req,
