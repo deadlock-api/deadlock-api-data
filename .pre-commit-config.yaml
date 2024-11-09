@@ -33,11 +33,6 @@ repos:
   rev: v0.7.3
   hooks:
   - id: ruff
-- repo: https://github.com/editorconfig-checker/editorconfig-checker.python
-  rev: 3.0.3
-  hooks:
-  - id: editorconfig-checker
-    alias: ec
 - repo: local
   hooks:
   - id: hadolint-docker
