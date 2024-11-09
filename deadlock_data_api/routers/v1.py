@@ -185,7 +185,7 @@ def get_active_matches(
     last_modified = os.path.getmtime("active_matches.json")
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
     res.headers["Last-Updated"] = str(int(last_modified))
-    account_id = utils.validate_steam_id(account_id)
+    account_id = utils.validate_steam_id_optional(account_id)
 
     def has_player(am: ActiveMatch, account_id: int) -> bool:
         for p in am.players:
