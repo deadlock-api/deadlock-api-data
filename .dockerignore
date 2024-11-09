@@ -1,3 +1,5 @@
 builds.json
 builds.db
 active_matches.json
+
+.venv
