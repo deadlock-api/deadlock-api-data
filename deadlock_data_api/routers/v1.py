@@ -1,6 +1,5 @@
 import bz2
 import logging
-import os
 from typing import Literal
 
 from cachetools.func import ttl_cache
@@ -172,9 +171,7 @@ def get_active_matches(
 ) -> list[ActiveMatch]:
     LOGGER.info("get_active_matches")
     limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
-    last_modified = os.path.getmtime("active_matches.json")
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
-    res.headers["Last-Updated"] = str(int(last_modified))
     account_id = utils.validate_steam_id_optional(account_id)
 
     def has_player(am: ActiveMatch, account_id: int) -> bool:

@@ -1,5 +1,4 @@
 import logging
-from time import sleep
 from typing import Literal
 
 import requests
@@ -21,7 +20,7 @@ from valveprotos_py.citadel_gcmessages_client_pb2 import (
 )
 
 from deadlock_data_api.globs import CH_POOL, postgres_conn
-from deadlock_data_api.models.active_match import ActiveMatch, APIActiveMatch
+from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.patch_note import PatchNote
 from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
@@ -310,25 +309,9 @@ def fetch_active_matches() -> list[ActiveMatch]:
             ).active_matches
         ]
     except Exception:
-        return load_active_matches()
-
-
-@ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
-def load_active_matches() -> list[ActiveMatch]:
-    LOGGER.debug("load_active_matches")
-    last_exc = None
-    for i in range(LOAD_FILE_RETRIES):
-        try:
-            with open("active_matches.json") as f:
-                return APIActiveMatch.model_validate_json(f.read()).active_matches
-        except Exception as e:
-            last_exc = e
-            LOGGER.warning(
-                f"Error loading active matches: {str(e)}, retry ({i + 1}/{LOAD_FILE_RETRIES})"
-            )
-        sleep(50)
-    send_webhook_message(f"Error loading active matches: {str(last_exc)}")
-    raise HTTPException(status_code=500, detail="Failed to load active matches")
+        send_webhook_message("Failed to fetch active matches")
+        LOGGER.exception("Failed to fetch active matches")
+        raise HTTPException(status_code=500, detail="Failed to fetch active matches")
 
 
 @ttl_cache(ttl=30 * 60)
