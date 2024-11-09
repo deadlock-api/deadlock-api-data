@@ -7,15 +7,17 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import PlainTextResponse, RedirectResponse
 
+from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.routers import base, v1
 
+# Doesn't use AppConfig because logging is critical
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
 
-if "SENTRY_DSN" in os.environ:
+if CONFIG.sentry_dsn:
     import sentry_sdk
 
     sentry_sdk.init(
-        dsn=os.environ["SENTRY_DSN"],
+        dsn=CONFIG.sentry_dsn,
         traces_sample_rate=0.2,
         _experiments={
             "continuous_profiling_auto_start": True,

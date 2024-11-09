@@ -19,6 +19,7 @@ from valveprotos_py.citadel_gcmessages_common_pb2 import (
 )
 
 from deadlock_data_api import utils
+from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import CH_POOL, redis_conn, s3_conn
 from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
@@ -299,7 +300,7 @@ def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Respons
     except Exception as e:
         LOGGER.warning(f"Failed to get metadata from redis: {e}")
 
-    bucket = os.environ.get("S3_BUCKET_NAME", "hexe")
+    bucket = CONFIG.s3.meta_file_bucket_name
     key = f"processed/metadata/{match_id}.meta.bz2"
     object_exists = True
     try:
