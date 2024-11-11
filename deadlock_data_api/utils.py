@@ -65,12 +65,8 @@ def call_steam_proxy_raw(msg_type: int, msg: Message) -> bytes:
 
     msg_data = b64encode(msg.SerializeToString()).decode("utf-8")
     body = {
-        "messageType": msg_type,
-        "timeoutMillis": 10_000,
-        "rateLimit": {
-            "messagePeriodMillis": 10,
-        },
-        "limitBufferingBehavior": "too_many_requests",
+        "message_kind": msg_type,
+        "job_cooldown_millis": 30_000,
         "data": msg_data,
     }
     response = requests.post(
