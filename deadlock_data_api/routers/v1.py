@@ -181,9 +181,12 @@ def get_active_matches_raw(req: Request, res: Response) -> Response:
 def get_active_matches(
     req: Request, res: Response, account_id: int | None = None
 ) -> list[ActiveMatch]:
+    limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
+    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
+
     account_id = utils.validate_steam_id_optional(account_id)
 
-    raw_active_matches = get_active_matches_raw(req, res).body
+    raw_active_matches = fetch_active_matches_raw()
     msg = CMsgClientToGCGetActiveMatchesResponse.FromString(raw_active_matches)
 
     return [
