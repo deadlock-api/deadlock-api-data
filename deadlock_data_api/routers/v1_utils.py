@@ -313,9 +313,15 @@ def fetch_active_matches_raw() -> bytes:
             k_EMsgClientToGCGetActiveMatches, CMsgClientToGCGetActiveMatches(), 10
         )
         return snappy.decompress(msg[7:])
-    except Exception:
-        send_webhook_message("Failed to fetch active matches")
-        LOGGER.exception("Failed to fetch active matches")
+    except Exception as e:
+        if isinstance(e, requests.exceptions.HTTPError):
+            send_webhook_message(
+                f"Failed to fetch active matches: HTTPError: {e.response.status_code}",
+            )
+            LOGGER.exception(f"Failed to fetch active matches: HTTPError: {e.response.status_code}")
+        else:
+            send_webhook_message(f"Failed to fetch active matches: {type(e).__name__}")
+            LOGGER.exception(f"Failed to fetch active matches: {type(e).__name__}")
         raise HTTPException(status_code=500, detail="Failed to fetch active matches")
 
 
