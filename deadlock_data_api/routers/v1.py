@@ -235,6 +235,7 @@ def get_player_rank(account_id: int) -> PlayerCard:
     "/players/{account_id}/match-history",
     response_model_exclude_none=True,
     summary="Rate Limit 60req/min, API-Key RateLimit: 20req/s",
+    deprecated=True,
 )
 def player_match_history(
     req: Request,
