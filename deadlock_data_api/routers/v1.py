@@ -222,7 +222,7 @@ def player_rank(
 def get_player_rank(account_id: int) -> PlayerCard:
     msg = CMsgClientToGCGetProfileCard()
     msg.account_id = account_id
-    msg = call_steam_proxy(k_EMsgClientToGCGetProfileCard, msg, CMsgCitadelProfileCard)
+    msg = call_steam_proxy(k_EMsgClientToGCGetProfileCard, msg, CMsgCitadelProfileCard, 10)
     player_card = PlayerCard.from_msg(msg)
     with CH_POOL.get_client() as client:
         player_card.store_clickhouse(client, account_id)
