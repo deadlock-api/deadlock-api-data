@@ -25,7 +25,9 @@ from deadlock_data_api.globs import CH_POOL, redis_conn, s3_conn
 from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.player_card import PlayerCard
-from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
+from deadlock_data_api.models.player_match_history import (
+    PlayerMatchHistoryEntry,
+)
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
@@ -49,7 +51,7 @@ CACHE_AGE_BUILDS = 5 * 60
 
 LOGGER = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/v1")
+router = APIRouter(prefix="/v1", tags=["V1"])
 
 
 @router.get("/patch-notes", summary="No Rate Limits")
@@ -248,7 +250,7 @@ def player_match_history(
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     account_id = utils.validate_steam_id(account_id)
-    return get_player_match_history(account_id)
+    return get_player_match_history(account_id).matches
 
 
 @router.get("/matches/{match_id}/raw_metadata", include_in_schema=False)

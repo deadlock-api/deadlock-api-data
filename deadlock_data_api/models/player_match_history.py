@@ -1,5 +1,5 @@
 from clickhouse_driver import Client
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgClientToGCGetMatchHistoryResponse,
 )
@@ -84,3 +84,10 @@ class PlayerMatchHistoryEntry(BaseModel):
                 for e in entries
             ],
         )
+
+
+class PlayerMatchHistory(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    cursor: int | None = Field(None)
+    matches: list[PlayerMatchHistoryEntry]

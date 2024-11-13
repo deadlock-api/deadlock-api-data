@@ -22,7 +22,10 @@ from valveprotos_py.citadel_gcmessages_client_pb2 import (
 from deadlock_data_api.globs import CH_POOL, postgres_conn
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.patch_note import PatchNote
-from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
+from deadlock_data_api.models.player_match_history import (
+    PlayerMatchHistory,
+    PlayerMatchHistoryEntry,
+)
 from deadlock_data_api.utils import (
     call_steam_proxy,
     call_steam_proxy_raw,
@@ -37,9 +40,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 @ttl_cache(ttl=900)
-def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
+def get_player_match_history(
+    account_id: int, continue_cursor: int | None = None
+) -> PlayerMatchHistory:
     msg = CMsgClientToGCGetMatchHistory()
     msg.account_id = account_id
+    if continue_cursor is not None:
+        msg.continue_cursor = continue_cursor
     msg = call_steam_proxy(
         k_EMsgClientToGCGetMatchHistory, msg, CMsgClientToGCGetMatchHistoryResponse, 10
     )
@@ -47,7 +54,7 @@ def get_player_match_history(account_id: int) -> list[PlayerMatchHistoryEntry]:
     match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
     with CH_POOL.get_client() as client:
         PlayerMatchHistoryEntry.store_clickhouse(client, account_id, match_history)
-    return match_history
+    return PlayerMatchHistory(cursor=msg.continue_cursor, matches=match_history)
 
 
 @ttl_cache(ttl=60 * 60)
