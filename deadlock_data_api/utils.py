@@ -47,11 +47,17 @@ def is_valid_uuid(value: str | None) -> bool:
 R = TypeVar("R", bound=Message)
 
 
-def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R], cooldown_time: int) -> R:
+def call_steam_proxy(
+    msg_type: int,
+    msg: Message,
+    response_type: type[R],
+    cooldown_time: int,
+    groups: list[str],
+) -> R:
     MAX_RETRIES = 3
     for i in range(MAX_RETRIES):
         try:
-            data = call_steam_proxy_raw(msg_type, msg, cooldown_time)
+            data = call_steam_proxy_raw(msg_type, msg, cooldown_time, groups)
             return response_type.FromString(data)
         except Exception as e:
             LOGGER.warning(f"Failed to call Steam proxy: {e}")
@@ -60,13 +66,16 @@ def call_steam_proxy(msg_type: int, msg: Message, response_type: type[R], cooldo
     raise RuntimeError("steam proxy retry raise invariant broken: - should never hit this point")
 
 
-def call_steam_proxy_raw(msg_type: int, msg: Message, cooldown_time: int) -> bytes:
+def call_steam_proxy_raw(
+    msg_type: int, msg: Message, cooldown_time: int, groups: list[str]
+) -> bytes:
     assert CONFIG.steam_proxy, "SteamProxyConfig must be configured to call the proxy"
 
     msg_data = b64encode(msg.SerializeToString()).decode("utf-8")
     body = {
         "message_kind": msg_type,
         "job_cooldown_millis": cooldown_time,
+        "bot_in_all_groups": groups,
         "data": msg_data,
     }
     response = requests.post(

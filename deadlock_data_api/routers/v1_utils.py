@@ -48,7 +48,11 @@ def get_player_match_history(
     if continue_cursor is not None:
         msg.continue_cursor = continue_cursor
     msg = call_steam_proxy(
-        k_EMsgClientToGCGetMatchHistory, msg, CMsgClientToGCGetMatchHistoryResponse, 10
+        k_EMsgClientToGCGetMatchHistory,
+        msg,
+        CMsgClientToGCGetMatchHistoryResponse,
+        10,
+        ["GetMatchHistory"],
     )
     match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
     match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
@@ -92,7 +96,11 @@ def get_match_salts_from_steam(
     msg = CMsgClientToGCGetMatchMetaData()
     msg.match_id = match_id
     msg = call_steam_proxy(
-        k_EMsgClientToGCGetMatchMetaData, msg, CMsgClientToGCGetMatchMetaDataResponse, 36_000
+        k_EMsgClientToGCGetMatchMetaData,
+        msg,
+        CMsgClientToGCGetMatchMetaDataResponse,
+        36_000,
+        ["GetMatchMetaData"],
     )
     if msg.metadata_salt == 0 or (need_demo and msg.replay_salt == 0):
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Match not found")
@@ -310,7 +318,10 @@ def load_build_version(build_id: int, version: int) -> Build:
 def fetch_active_matches_raw() -> bytes:
     try:
         msg = call_steam_proxy_raw(
-            k_EMsgClientToGCGetActiveMatches, CMsgClientToGCGetActiveMatches(), 10
+            k_EMsgClientToGCGetActiveMatches,
+            CMsgClientToGCGetActiveMatches(),
+            10,
+            ["LowRateLimitApis"],
         )
         return snappy.decompress(msg[7:])
     except Exception as e:
