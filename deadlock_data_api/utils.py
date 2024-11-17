@@ -10,8 +10,12 @@ from fastapi import HTTPException, Security
 from fastapi.openapi.models import APIKey, APIKeyIn
 from fastapi.security.api_key import APIKeyBase
 from google.protobuf.message import Message
+from requests import HTTPError
 from starlette.requests import Request
-from starlette.status import HTTP_403_FORBIDDEN
+from starlette.status import (
+    HTTP_403_FORBIDDEN,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
 
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import postgres_conn
@@ -83,7 +87,10 @@ def call_steam_proxy_raw(
         json=body,
         headers={"Authorization": f"Bearer {CONFIG.steam_proxy.api_token}"},
     )
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except HTTPError as e:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     data = response.json()["data"]
     return b64decode(data)
 
