@@ -103,7 +103,7 @@ def get_match_salts_from_steam(
         k_EMsgClientToGCGetMatchMetaData,
         msg,
         CMsgClientToGCGetMatchMetaDataResponse,
-        36_000,
+        576_000,  # 25 per 4 hours
         account_groups.split(",") if account_groups else ["GetMatchMetaData"],
     )
     if msg.metadata_salt == 0 or (need_demo and msg.replay_salt == 0):
