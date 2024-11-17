@@ -9,19 +9,23 @@ from cachetools.func import ttl_cache
 from fastapi import HTTPException
 from starlette.status import HTTP_404_NOT_FOUND
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
+    CMsgCitadelProfileCard,
     CMsgClientToGCGetActiveMatches,
     CMsgClientToGCGetMatchHistory,
     CMsgClientToGCGetMatchHistoryResponse,
     CMsgClientToGCGetMatchMetaData,
     CMsgClientToGCGetMatchMetaDataResponse,
+    CMsgClientToGCGetProfileCard,
     k_EMsgClientToGCGetActiveMatches,
     k_EMsgClientToGCGetMatchHistory,
     k_EMsgClientToGCGetMatchMetaData,
+    k_EMsgClientToGCGetProfileCard,
 )
 
 from deadlock_data_api.globs import CH_POOL, postgres_conn
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.patch_note import PatchNote
+from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
     PlayerMatchHistory,
     PlayerMatchHistoryEntry,
@@ -41,7 +45,7 @@ LOGGER = logging.getLogger(__name__)
 
 @ttl_cache(ttl=900)
 def get_player_match_history(
-    account_id: int, continue_cursor: int | None = None
+    account_id: int, continue_cursor: int | None = None, account_groups: str | None = None
 ) -> PlayerMatchHistory:
     msg = CMsgClientToGCGetMatchHistory()
     msg.account_id = account_id
@@ -52,7 +56,7 @@ def get_player_match_history(
         msg,
         CMsgClientToGCGetMatchHistoryResponse,
         15_000,  # 4 per minute
-        ["GetMatchHistory"],
+        account_groups.split(",") or ["GetMatchHistory"],
     )
     match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
     match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
@@ -91,7 +95,7 @@ def get_match_start_time(match_id: int) -> datetime | None:
 
 @ttl_cache(ttl=60 * 60)
 def get_match_salts_from_steam(
-    match_id: int, need_demo: bool = False
+    match_id: int, need_demo: bool = False, account_groups: str | None = None
 ) -> CMsgClientToGCGetMatchMetaDataResponse:
     msg = CMsgClientToGCGetMatchMetaData()
     msg.match_id = match_id
@@ -100,7 +104,7 @@ def get_match_salts_from_steam(
         msg,
         CMsgClientToGCGetMatchMetaDataResponse,
         36_000,
-        ["GetMatchMetaData"],
+        account_groups.split(",") or ["GetMatchMetaData"],
     )
     if msg.metadata_salt == 0 or (need_demo and msg.replay_salt == 0):
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Match not found")
@@ -315,13 +319,13 @@ def load_build_version(build_id: int, version: int) -> Build:
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
-def fetch_active_matches_raw() -> bytes:
+def fetch_active_matches_raw(account_groups: str | None = None) -> bytes:
     try:
         msg = call_steam_proxy_raw(
             k_EMsgClientToGCGetActiveMatches,
             CMsgClientToGCGetActiveMatches(),
             10,
-            ["LowRateLimitApis"],
+            account_groups.split(",") or ["LowRateLimitApis"],
         )
         return snappy.decompress(msg[7:])
     except Exception as e:
@@ -342,3 +346,20 @@ def fetch_patch_notes() -> list[PatchNote]:
     response = requests.get(rss_url)
     items = xmltodict.parse(response.text)["rss"]["channel"]["item"]
     return [PatchNote.model_validate(item) for item in items]
+
+
+@ttl_cache(ttl=900)
+def get_player_rank(account_id: int, account_groups: str | None = None) -> PlayerCard:
+    msg = CMsgClientToGCGetProfileCard()
+    msg.account_id = account_id
+    msg = call_steam_proxy(
+        k_EMsgClientToGCGetProfileCard,
+        msg,
+        CMsgCitadelProfileCard,
+        10,
+        account_groups.split(",") or ["LowRateLimitApis"],
+    )
+    player_card = PlayerCard.from_msg(msg)
+    with CH_POOL.get_client() as client:
+        player_card.store_clickhouse(client, account_id)
+    return player_card

@@ -23,6 +23,7 @@ def player_match_history(
     res: Response,
     account_id: int,
     continue_cursor: int | None = None,
+    account_groups: str = None,
 ) -> PlayerMatchHistory:
     limiter.apply_limits(
         req,
@@ -33,4 +34,7 @@ def player_match_history(
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     account_id = utils.validate_steam_id(account_id)
-    return get_player_match_history(account_id, continue_cursor)
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
+    )
+    return get_player_match_history(account_id, continue_cursor, account_groups)
