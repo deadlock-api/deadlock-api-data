@@ -56,7 +56,7 @@ def get_player_match_history(
         msg,
         CMsgClientToGCGetMatchHistoryResponse,
         15_000,  # 4 per minute
-        account_groups.split(",") or ["GetMatchHistory"],
+        account_groups.split(",") if account_groups else ["GetMatchHistory"],
     )
     match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
     match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
@@ -104,7 +104,7 @@ def get_match_salts_from_steam(
         msg,
         CMsgClientToGCGetMatchMetaDataResponse,
         36_000,
-        account_groups.split(",") or ["GetMatchMetaData"],
+        account_groups.split(",") if account_groups else ["GetMatchMetaData"],
     )
     if msg.metadata_salt == 0 or (need_demo and msg.replay_salt == 0):
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Match not found")
@@ -325,7 +325,7 @@ def fetch_active_matches_raw(account_groups: str | None = None) -> bytes:
             k_EMsgClientToGCGetActiveMatches,
             CMsgClientToGCGetActiveMatches(),
             10,
-            account_groups.split(",") or ["LowRateLimitApis"],
+            account_groups.split(",") if account_groups else ["LowRateLimitApis"],
         )
         return snappy.decompress(msg[7:])
     except Exception as e:
@@ -357,7 +357,7 @@ def get_player_rank(account_id: int, account_groups: str | None = None) -> Playe
         msg,
         CMsgCitadelProfileCard,
         10,
-        account_groups.split(",") or ["LowRateLimitApis"],
+        account_groups.split(",") if account_groups else ["LowRateLimitApis"],
     )
     player_card = PlayerCard.from_msg(msg)
     with CH_POOL.get_client() as client:
