@@ -51,7 +51,7 @@ def get_player_match_history(
         k_EMsgClientToGCGetMatchHistory,
         msg,
         CMsgClientToGCGetMatchHistoryResponse,
-        10,
+        15_000,  # 4 per minute
         ["GetMatchHistory"],
     )
     match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
