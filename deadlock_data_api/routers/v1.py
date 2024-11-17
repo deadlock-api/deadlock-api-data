@@ -3,16 +3,12 @@ import logging
 from datetime import datetime, timedelta
 from typing import Literal
 
-from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
 from google.protobuf.json_format import MessageToDict
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
-    CMsgCitadelProfileCard,
     CMsgClientToGCGetActiveMatchesResponse,
-    CMsgClientToGCGetProfileCard,
-    k_EMsgClientToGCGetProfileCard,
 )
 from valveprotos_py.citadel_gcmessages_common_pb2 import (
     CMsgMatchMetaData,
@@ -21,7 +17,7 @@ from valveprotos_py.citadel_gcmessages_common_pb2 import (
 
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.globs import CH_POOL, redis_conn, s3_conn
+from deadlock_data_api.globs import redis_conn, s3_conn
 from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.player_card import PlayerCard
@@ -38,13 +34,13 @@ from deadlock_data_api.routers.v1_utils import (
     get_match_salts_from_steam,
     get_match_start_time,
     get_player_match_history,
+    get_player_rank,
     load_build,
     load_build_version,
     load_builds,
     load_builds_by_author,
     load_builds_by_hero,
 )
-from deadlock_data_api.utils import call_steam_proxy
 
 CACHE_AGE_ACTIVE_MATCHES = 20
 CACHE_AGE_BUILDS = 5 * 60
@@ -166,10 +162,15 @@ def get_builds_by_author_id(
     response_model_exclude_none=True,
     summary="Updates every 20s | Rate Limit 100req/s, Shared Rate Limit with /active-matches",
 )
-def get_active_matches_raw(req: Request, res: Response) -> Response:
+def get_active_matches_raw(
+    req: Request, res: Response, account_groups: str | None = None
+) -> Response:
     limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
+    )
     return Response(
-        content=fetch_active_matches_raw(),
+        content=fetch_active_matches_raw(account_groups),
         media_type="application/octet-stream",
         headers={"Cache-Control": f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"},
     )
@@ -181,14 +182,17 @@ def get_active_matches_raw(req: Request, res: Response) -> Response:
     summary="Updates every 20s | Rate Limit 100req/s, Shared Rate Limit with /raw-active-matches",
 )
 def get_active_matches(
-    req: Request, res: Response, account_id: int | None = None
+    req: Request, res: Response, account_id: int | None = None, account_groups: str | None = None
 ) -> list[ActiveMatch]:
     limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
 
     account_id = utils.validate_steam_id_optional(account_id)
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
+    )
 
-    raw_active_matches = fetch_active_matches_raw()
+    raw_active_matches = fetch_active_matches_raw(account_groups)
     msg = CMsgClientToGCGetActiveMatchesResponse.FromString(raw_active_matches)
 
     return [
@@ -207,6 +211,7 @@ def player_rank(
     req: Request,
     res: Response,
     account_id: int,
+    account_groups: str = None,
 ) -> PlayerCard:
     limiter.apply_limits(
         req,
@@ -217,20 +222,10 @@ def player_rank(
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     account_id = utils.validate_steam_id(account_id)
-    return get_player_rank(account_id)
-
-
-@ttl_cache(ttl=900)
-def get_player_rank(account_id: int) -> PlayerCard:
-    msg = CMsgClientToGCGetProfileCard()
-    msg.account_id = account_id
-    msg = call_steam_proxy(
-        k_EMsgClientToGCGetProfileCard, msg, CMsgCitadelProfileCard, 10, ["LowRateLimitApis"]
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
     )
-    player_card = PlayerCard.from_msg(msg)
-    with CH_POOL.get_client() as client:
-        player_card.store_clickhouse(client, account_id)
-    return player_card
+    return get_player_rank(account_id, account_groups)
 
 
 @router.get(
@@ -240,9 +235,7 @@ def get_player_rank(account_id: int) -> PlayerCard:
     deprecated=True,
 )
 def player_match_history(
-    req: Request,
-    res: Response,
-    account_id: int,
+    req: Request, res: Response, account_id: int, account_groups: str | None = None
 ) -> list[PlayerMatchHistoryEntry]:
     limiter.apply_limits(
         req,
@@ -253,7 +246,10 @@ def player_match_history(
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     account_id = utils.validate_steam_id(account_id)
-    return get_player_match_history(account_id).matches
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
+    )
+    return get_player_match_history(account_id, account_groups=account_groups).matches
 
 
 @router.get("/matches/{match_id}/raw_metadata", include_in_schema=False)
@@ -276,13 +272,18 @@ At the moment the rate limits are quite strict, as we are serving it from an s3 
     """,
     summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /metadata",
 )
-def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Response:
+def get_raw_metadata_file(
+    req: Request, res: Response, match_id: int, account_groups: str | None = None
+) -> Response:
     limiter.apply_limits(
         req,
         res,
         "/v1/matches/{match_id}/metadata",
         [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
         [RateLimit(limit=20, period=1)],
+    )
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
     )
     # check if redis has the metadata
     try:
@@ -328,7 +329,7 @@ def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Respons
             [RateLimit(limit=20, period=1)],
             [RateLimit(limit=3000, period=3600)],
         )
-        salts = get_match_salts_from_steam(match_id)
+        salts = get_match_salts_from_steam(match_id, account_groups=account_groups)
 
     metafile = fetch_metadata(match_id, salts)
 
@@ -356,8 +357,13 @@ def get_raw_metadata_file(req: Request, res: Response, match_id: int) -> Respons
     "/matches/{match_id}/metadata",
     summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /raw-metadata",
 )
-async def get_metadata(req: Request, res: Response, match_id: int) -> JSONResponse:
-    raw_metadata = get_raw_metadata_file(req, res, match_id).body
+async def get_metadata(
+    req: Request, res: Response, match_id: int, account_groups: str | None = None
+) -> JSONResponse:
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
+    )
+    raw_metadata = get_raw_metadata_file(req, res, match_id, account_groups).body
     raw_metadata_decompressed = bz2.decompress(raw_metadata)
     metadata = CMsgMatchMetaData.FromString(raw_metadata_decompressed)
     match_contents = CMsgMatchMetaDataContents.FromString(metadata.match_details)
@@ -368,13 +374,18 @@ async def get_metadata(req: Request, res: Response, match_id: int) -> JSONRespon
     "/matches/{match_id}/demo-url",
     summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s",
 )
-def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
+def get_demo_url(
+    req: Request, res: Response, match_id: int, account_groups: str | None = None
+) -> dict[str, str]:
     limiter.apply_limits(
         req,
         res,
         "/v1/matches/{match_id}/demo-url",
         [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
         [RateLimit(limit=20, period=1)],
+    )
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
     )
     salts = get_match_salts_from_db(match_id, True)
     if salts is None:
@@ -390,7 +401,7 @@ def get_demo_url(req: Request, res: Response, match_id: int) -> dict[str, str]:
             [RateLimit(limit=20, period=1)],
             [RateLimit(limit=3000, period=3600)],
         )
-        salts = get_match_salts_from_steam(match_id, True)
+        salts = get_match_salts_from_steam(match_id, True, account_groups)
     demo_url = (
         f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
     )

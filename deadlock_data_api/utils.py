@@ -136,6 +136,33 @@ def is_valid_api_key(api_key: str, data_access: bool = False) -> bool:
         return cursor.fetchone() is not None
 
 
+def validate_account_groups(account_groups: str, api_key: str | None) -> str | None:
+    if not account_groups:
+        return None
+    if not api_key:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="Account groups require an API key"
+        )
+    for group in account_groups.split(","):
+        if not has_api_key_account_group_access(api_key, group):
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail=f"Invalid account group: {group}"
+            )
+    return account_groups
+
+
+def has_api_key_account_group_access(api_key: str, group_name: str = None):
+    if not is_valid_api_key(api_key):
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+    api_key = api_key.lstrip("HEXE-")
+    with postgres_conn().cursor() as cursor:
+        cursor.execute(
+            "SELECT 1 FROM api_key_account_groups WHERE key = %s AND account_group_name = %s",
+            (str(api_key), group_name),
+        )
+        return cursor.fetchone() is not None
+
+
 async def get_api_key(api_key: str = Security(api_key_param)):
     if not is_valid_api_key(api_key):
         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
