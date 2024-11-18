@@ -57,26 +57,26 @@ def get_active_streams(req: Request, res: Response) -> list[int]:
         raise HTTPException(status_code=500, detail="Failed to get active streams")
 
 
+async def message_stream(match_id: int):
+    consumer = AIOKafkaConsumer(
+        f"game-streams-{match_id}",
+        bootstrap_servers=CONFIG.kafka.bootstrap_servers(),
+        group_id=str(uuid.uuid4()),
+        auto_offset_reset="earliest",
+    )
+    await consumer.start()
+    try:
+        async for msg in consumer:
+            LOGGER.info(f"Received message: {msg.value}")
+            yield msg.value + b"\n"
+    finally:
+        await consumer.stop()
+
+
 @router.get("/matches/{match_id}/stream_sse", summary="Stream game events via Server-Sent Events")
-def stream_sse(match_id: str) -> StreamingResponse:
-    LOGGER.info(f"Streaming match {match_id} via SSE")
-
-    async def event_stream():
-        consumer = AIOKafkaConsumer(
-            f"game-streams-{match_id}",
-            bootstrap_servers=CONFIG.kafka.bootstrap_servers(),
-            group_id=str(uuid.uuid4()),
-            auto_offset_reset="earliest",
-        )
-        await consumer.start()
-        try:
-            async for msg in consumer:
-                LOGGER.debug(f"Sending message: {msg.value.decode('utf-8')}")
-                yield msg.value + b"\n"
-        finally:
-            await consumer.stop()
-
-    return StreamingResponse(event_stream())
+async def stream_sse(match_id: int) -> StreamingResponse:
+    LOGGER.info(f"Streaming match {match_id} via Server-Sent Events")
+    return StreamingResponse(message_stream(match_id), media_type="text/event-stream")
 
 
 @router.get(
@@ -95,21 +95,9 @@ def stream_websocket_dummy(match_id: str) -> dict[str, str]:
 
 
 @router.websocket("/matches/{match_id}/stream_ws")
-async def stream_websocket(websocket: WebSocket, match_id: str):
+async def stream_websocket(websocket: WebSocket, match_id: int):
     await websocket.accept()
+    LOGGER.info(f"Streaming match {match_id} via WebSocket")
 
-    LOGGER.info(f"Streaming match {match_id} via websocket")
-
-    consumer = AIOKafkaConsumer(
-        f"game-streams-{match_id}",
-        bootstrap_servers=CONFIG.kafka.bootstrap_servers(),
-        group_id=websocket.client.host,
-        auto_offset_reset="earliest",
-    )
-    await consumer.start()
-    try:
-        async for msg in consumer:
-            LOGGER.debug(f"Sending message: {msg.value.decode('utf-8')}")
-            await websocket.send_bytes(msg.value + b"\n")
-    finally:
-        await consumer.stop()
+    async for msg in message_stream(match_id):
+        await websocket.send_bytes(msg)
