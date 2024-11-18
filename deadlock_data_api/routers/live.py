@@ -1,7 +1,8 @@
 import logging
+import uuid
 
 import requests
-from confluent_kafka import Consumer
+from aiokafka import AIOKafkaConsumer
 from fastapi import APIRouter, HTTPException
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
@@ -57,34 +58,29 @@ def get_active_streams(req: Request, res: Response) -> list[int]:
 
 
 @router.get("/matches/{match_id}/stream_sse", summary="Stream game events via Server-Sent Events")
-def stream_sse(req: Request, match_id: str) -> StreamingResponse:
+def stream_sse(match_id: str) -> StreamingResponse:
     LOGGER.info(f"Streaming match {match_id} via SSE")
-    return "Deactivated"
 
-    # async def event_stream():
-    #     consumer = Consumer(
-    #         {
-    #             "bootstrap.servers": CONFIG.kafka.bootstrap_servers(),
-    #             "group.id": req.headers.get("CF-Connecting-IP", req.client.host),
-    #             "auto.offset.reset": "earliest",
-    #         }
-    #     )
-    #     consumer.subscribe([f"game-streams-{match_id}"])
-    #     while True:
-    #         message = consumer.poll(timeout=1.0)
-    #         if message is None:
-    #             continue
-    #         if message.error():
-    #             LOGGER.error(f"Consumer error: {message.error()}")
-    #             continue
-    #         LOGGER.debug(f"Sending message: {message.value().decode('utf-8')}")
-    #         yield message.value() + b"\n"
-    #
-    # return StreamingResponse(event_stream())
+    async def event_stream():
+        consumer = AIOKafkaConsumer(
+            f"game-streams-{match_id}",
+            bootstrap_servers=CONFIG.kafka.bootstrap_servers(),
+            group_id=str(uuid.uuid4()),
+            auto_offset_reset="earliest",
+        )
+        await consumer.start()
+        try:
+            async for msg in consumer:
+                LOGGER.debug(f"Sending message: {msg.value.decode('utf-8')}")
+                yield msg.value + b"\n"
+        finally:
+            await consumer.stop()
+
+    return StreamingResponse(event_stream())
 
 
 @router.get(
-    "/matches/{match_id}/stream_ws",
+    "/matches/{match_id}/stream_ws_",
     summary="Stream game events via WebSockets",
     description="""
 # Websocket streaming
@@ -94,33 +90,26 @@ This is just a placeholder to document the websocket streaming endpoint. It does
 You can connect to this endpoint using a websocket client.
 """,
 )
-def stream_websocket_dummy(match_id: str) -> str:
-    LOGGER.info(f"Streaming match {match_id} via websocket")
-    return (
-        "This is just a placeholder, you have to connect to this endpoint using a websocket client."
-    )
+def stream_websocket_dummy(match_id: str) -> dict[str, str]:
+    return {"websocket_url": f"wss://data.deadlock-api.com/live/matches/{match_id}/stream_ws"}
 
 
 @router.websocket("/matches/{match_id}/stream_ws")
 async def stream_websocket(websocket: WebSocket, match_id: str):
-    LOGGER.info(f"Streaming match {match_id} via websocket")
-
     await websocket.accept()
 
-    consumer = Consumer(
-        {
-            "bootstrap.servers": CONFIG.kafka.bootstrap_servers(),
-            "group.id": websocket.client.host,
-            "auto.offset.reset": "earliest",
-        }
+    LOGGER.info(f"Streaming match {match_id} via websocket")
+
+    consumer = AIOKafkaConsumer(
+        f"game-streams-{match_id}",
+        bootstrap_servers=CONFIG.kafka.bootstrap_servers(),
+        group_id=websocket.client.host,
+        auto_offset_reset="earliest",
     )
-    consumer.subscribe([f"game-streams-{match_id}"])
-    while True:
-        message = consumer.poll(timeout=1.0)
-        if message is None:
-            continue
-        if message.error():
-            LOGGER.error(f"Consumer error: {message.error()}")
-            continue
-        LOGGER.debug(f"Sending message: {message.value().decode('utf-8')}")
-        await websocket.send_bytes(message.value() + b"\n")
+    await consumer.start()
+    try:
+        async for msg in consumer:
+            LOGGER.debug(f"Sending message: {msg.value.decode('utf-8')}")
+            await websocket.send_bytes(msg.value + b"\n")
+    finally:
+        await consumer.stop()
