@@ -56,7 +56,7 @@ def get_active_streams(req: Request, res: Response) -> list[int]:
         raise HTTPException(status_code=500, detail="Failed to get active streams")
 
 
-@router.get("/matches/{match_id}/stream_sse")
+@router.get("/matches/{match_id}/stream_sse", summary="Stream game events via Server-Sent Events")
 def stream_sse(req: Request, match_id: str) -> StreamingResponse:
     LOGGER.info(f"Streaming match {match_id} via SSE")
 
@@ -84,7 +84,7 @@ def stream_sse(req: Request, match_id: str) -> StreamingResponse:
 
 @router.get(
     "/matches/{match_id}/stream_ws",
-    summary="Rate Limit 100req/s",
+    summary="Stream game events via WebSockets",
     description="""
 # Websocket streaming
 
