@@ -8,7 +8,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import PlainTextResponse, RedirectResponse
 
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.routers import base, v1, v2
+from deadlock_data_api.routers import base, live, v1, v2
 
 # Doesn't use AppConfig because logging is critical
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
@@ -45,6 +45,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
 
 Instrumentator(should_group_status_codes=False).instrument(app).expose(app, include_in_schema=False)
 
+app.include_router(live.router)
 app.include_router(v2.router)
 app.include_router(v1.router)
 app.include_router(base.router, include_in_schema=False)
@@ -81,4 +82,5 @@ if __name__ == "__main__":
         port=8080,
         interface=Interfaces.ASGI,
         log_level=LogLevels.debug,
+        websockets=True,
     ).serve()

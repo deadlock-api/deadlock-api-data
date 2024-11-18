@@ -56,6 +56,22 @@ class PostgresConfig:
 
 
 @dataclass
+class KafkaConfig:
+    host: str
+    port: int
+
+    def bootstrap_servers(self) -> str:
+        return f"{self.host}:{self.port}"
+
+    @classmethod
+    def from_env(cls) -> "KafkaConfig":
+        return cls(
+            host=os.environ.get("KAFKA_HOST", "kafka"),
+            port=int(os.environ.get("KAFKA_PORT", 9092)),
+        )
+
+
+@dataclass
 class S3Config:
     region_name: str | None
     endpoint_url: str | None
@@ -95,6 +111,7 @@ class AppConfig:
     redis: RedisConfig
     postgres: PostgresConfig
     s3: S3Config
+    kafka: KafkaConfig
     steam_proxy: SteamProxyConfig | None
     discord_webhook_url: str | None
     emergency_mode: bool
@@ -109,6 +126,7 @@ class AppConfig:
             redis=RedisConfig.from_env(),
             postgres=PostgresConfig.from_env(),
             s3=S3Config.from_env(),
+            kafka=KafkaConfig.from_env(),
             steam_proxy=SteamProxyConfig.from_env(),
             discord_webhook_url=os.environ.get("DISCORD_WEBHOOK_URL"),
             emergency_mode=os.environ.get("EMERGENCY_MODE") == "true",
