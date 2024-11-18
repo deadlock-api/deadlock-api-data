@@ -100,5 +100,8 @@ async def stream_websocket(websocket: WebSocket, match_id: int):
     await websocket.accept()
     LOGGER.info(f"Streaming match {match_id} via WebSocket")
 
-    async for msg in message_stream(match_id):
-        await websocket.send_bytes(msg)
+    try:
+        async for msg in message_stream(match_id):
+            await websocket.send_bytes(msg)
+    except Exception as e:
+        LOGGER.error(f"Failed to stream match {match_id}: {e}")
