@@ -4,9 +4,9 @@ import uuid
 import requests
 from aiokafka import AIOKafkaConsumer
 from fastapi import APIRouter, HTTPException
-from starlette.requests import Request
+from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response, StreamingResponse
-from starlette.websockets import WebSocket
+from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.rate_limiter import limiter
@@ -69,15 +69,17 @@ async def message_stream(match_id: int):
         async for msg in consumer:
             LOGGER.info(f"Received message: {msg.value}")
             yield msg.value + b"\n"
+    except ClientDisconnect:
+        LOGGER.info("Client disconnected")
     finally:
+        await consumer.unsubscribe()
         await consumer.stop()
 
 
 @router.get("/matches/{match_id}/stream_sse", summary="Stream game events via Server-Sent Events")
-async def stream_sse(match_id: int) -> StreamingResponse:
-    raise HTTPException(status_code=501, detail="Not implemented")
-    # LOGGER.info(f"Streaming match {match_id} via Server-Sent Events")
-    # return StreamingResponse(message_stream(match_id), media_type="text/event-stream")
+async def stream_sse(req: Request, match_id: int) -> StreamingResponse:
+    LOGGER.info(f"Streaming match {match_id} via Server-Sent Events")
+    return StreamingResponse(message_stream(req, match_id), media_type="text/event-stream")
 
 
 @router.get(
@@ -100,8 +102,25 @@ async def stream_websocket(websocket: WebSocket, match_id: int):
     await websocket.accept()
     LOGGER.info(f"Streaming match {match_id} via WebSocket")
 
+    consumer = AIOKafkaConsumer(
+        f"game-streams-{match_id}",
+        bootstrap_servers=CONFIG.kafka.bootstrap_servers(),
+        group_id=str(uuid.uuid4()),
+        auto_offset_reset="earliest",
+    )
     try:
-        async for msg in message_stream(match_id):
-            await websocket.send_bytes(msg)
+        await consumer.start()
+        async for msg in consumer:
+            if websocket.client_state != WebSocketState.CONNECTED:
+                raise WebSocketDisconnect(1000, "Client disconnected")
+
+            LOGGER.info(f"Received message: {msg.value}")
+            await websocket.send_bytes(msg.value + b"\n")
+    except WebSocketDisconnect:
+        LOGGER.info("Client disconnected")
     except Exception as e:
         LOGGER.error(f"Failed to stream match {match_id}: {e}")
+    finally:
+        await consumer.unsubscribe()
+        await consumer.stop()
+        await websocket.close()
