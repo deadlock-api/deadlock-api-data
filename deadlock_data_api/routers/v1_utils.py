@@ -7,7 +7,7 @@ import snappy
 import xmltodict
 from cachetools.func import ttl_cache
 from fastapi import HTTPException
-from starlette.status import HTTP_404_NOT_FOUND
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_503_SERVICE_UNAVAILABLE
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
     CMsgClientToGCGetActiveMatches,
@@ -22,6 +22,7 @@ from valveprotos_py.citadel_gcmessages_client_pb2 import (
     k_EMsgClientToGCGetProfileCard,
 )
 
+from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import CH_POOL, postgres_conn
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.patch_note import PatchNote
@@ -47,6 +48,11 @@ LOGGER = logging.getLogger(__name__)
 def get_player_match_history(
     account_id: int, continue_cursor: int | None = None, account_groups: str | None = None
 ) -> PlayerMatchHistory:
+    if CONFIG.deactivate_match_history:
+        raise HTTPException(
+            status_code=HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Calls to Steam API are currently unavailable, try analytics match history instead",
+        )
     msg = CMsgClientToGCGetMatchHistory()
     msg.account_id = account_id
     if continue_cursor is not None:
@@ -97,6 +103,11 @@ def get_match_start_time(match_id: int) -> datetime | None:
 def get_match_salts_from_steam(
     match_id: int, need_demo: bool = False, account_groups: str | None = None
 ) -> CMsgClientToGCGetMatchMetaDataResponse:
+    if CONFIG.deactivate_match_metadata:
+        raise HTTPException(
+            status_code=HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Calls to Steam API are currently unavailable",
+        )
     msg = CMsgClientToGCGetMatchMetaData()
     msg.match_id = match_id
     msg = call_steam_proxy(
