@@ -59,27 +59,28 @@ def get_active_streams(req: Request, res: Response) -> list[int]:
 @router.get("/matches/{match_id}/stream_sse", summary="Stream game events via Server-Sent Events")
 def stream_sse(req: Request, match_id: str) -> StreamingResponse:
     LOGGER.info(f"Streaming match {match_id} via SSE")
+    return "Deactivated"
 
-    async def event_stream():
-        consumer = Consumer(
-            {
-                "bootstrap.servers": CONFIG.kafka.bootstrap_servers(),
-                "group.id": req.headers.get("CF-Connecting-IP", req.client.host),
-                "auto.offset.reset": "earliest",
-            }
-        )
-        consumer.subscribe([f"game-streams-{match_id}"])
-        while True:
-            message = consumer.poll(timeout=1.0)
-            if message is None:
-                continue
-            if message.error():
-                LOGGER.error(f"Consumer error: {message.error()}")
-                continue
-            LOGGER.debug(f"Sending message: {message.value().decode('utf-8')}")
-            yield message.value() + b"\n"
-
-    return StreamingResponse(event_stream())
+    # async def event_stream():
+    #     consumer = Consumer(
+    #         {
+    #             "bootstrap.servers": CONFIG.kafka.bootstrap_servers(),
+    #             "group.id": req.headers.get("CF-Connecting-IP", req.client.host),
+    #             "auto.offset.reset": "earliest",
+    #         }
+    #     )
+    #     consumer.subscribe([f"game-streams-{match_id}"])
+    #     while True:
+    #         message = consumer.poll(timeout=1.0)
+    #         if message is None:
+    #             continue
+    #         if message.error():
+    #             LOGGER.error(f"Consumer error: {message.error()}")
+    #             continue
+    #         LOGGER.debug(f"Sending message: {message.value().decode('utf-8')}")
+    #         yield message.value() + b"\n"
+    #
+    # return StreamingResponse(event_stream())
 
 
 @router.get(
