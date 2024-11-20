@@ -48,7 +48,7 @@ LOGGER = logging.getLogger(__name__)
 def get_player_match_history(
     account_id: int, continue_cursor: int | None = None, account_groups: str | None = None
 ) -> PlayerMatchHistory:
-    if CONFIG.deactivate_match_history:
+    if CONFIG.deactivate_match_history and account_groups is None:
         raise HTTPException(
             status_code=HTTP_503_SERVICE_UNAVAILABLE,
             detail="Calls to Steam API are currently unavailable, try analytics match history instead",
@@ -103,7 +103,7 @@ def get_match_start_time(match_id: int) -> datetime | None:
 def get_match_salts_from_steam(
     match_id: int, need_demo: bool = False, account_groups: str | None = None
 ) -> CMsgClientToGCGetMatchMetaDataResponse:
-    if CONFIG.deactivate_match_metadata:
+    if CONFIG.deactivate_match_metadata and account_groups is None:
         raise HTTPException(
             status_code=HTTP_503_SERVICE_UNAVAILABLE,
             detail="Calls to Steam API are currently unavailable",
