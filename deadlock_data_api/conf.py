@@ -82,13 +82,13 @@ class S3Config:
     """The bucket which contains .meta.bz2 files"""
 
     @classmethod
-    def from_env(cls) -> "S3Config":
+    def from_env(cls, s3_name: str) -> "S3Config":
         return cls(
-            region_name=os.environ.get("S3_REGION"),
-            endpoint_url=os.environ.get("S3_ENDPOINT_URL_WITH_PROTOCOL"),
-            aws_access_key_id=os.environ.get("S3_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("S3_SECRET_ACCESS_KEY"),
-            meta_file_bucket_name=os.environ.get("S3_BUCKET_NAME", "hexe"),
+            region_name=os.environ.get(f"S3_{s3_name}_REGION"),
+            endpoint_url=os.environ.get(f"S3_{s3_name}_ENDPOINT_URL_WITH_PROTOCOL"),
+            aws_access_key_id=os.environ.get(f"S3_{s3_name}_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get(f"S3_{s3_name}_SECRET_ACCESS_KEY"),
+            meta_file_bucket_name=os.environ.get(f"S3_{s3_name}_BUCKET_NAME", "hexe"),
         )
 
 
@@ -110,7 +110,8 @@ class AppConfig:
     clickhouse: ClickhouseConfig
     redis: RedisConfig
     postgres: PostgresConfig
-    s3: S3Config
+    s3_main: S3Config
+    s3_cache: S3Config
     kafka: KafkaConfig
     steam_proxy: SteamProxyConfig | None
     discord_webhook_url: str | None
@@ -127,7 +128,8 @@ class AppConfig:
             clickhouse=ClickhouseConfig.from_env(),
             redis=RedisConfig.from_env(),
             postgres=PostgresConfig.from_env(),
-            s3=S3Config.from_env(),
+            s3_main=S3Config.from_env("MAIN"),
+            s3_cache=S3Config.from_env("CACHE"),
             kafka=KafkaConfig.from_env(),
             steam_proxy=SteamProxyConfig.from_env(),
             discord_webhook_url=os.environ.get("DISCORD_WEBHOOK_URL"),

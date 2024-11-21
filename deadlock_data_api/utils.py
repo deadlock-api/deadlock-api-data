@@ -18,7 +18,7 @@ from starlette.status import (
 )
 
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.globs import postgres_conn
+from deadlock_data_api.globs import postgres_conn, s3_cache_conn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -204,6 +204,23 @@ def validate_steam_id(steam_id: int | str) -> int:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def cache_file(key: str, data: bytes):
+    s3 = s3_cache_conn()
+    s3.put_object(Bucket=CONFIG.s3_cache.meta_file_bucket_name, Key=key, Body=data)
+
+
+def get_cached_file(key: str) -> bytes | None:
+    s3 = s3_cache_conn()
+    try:
+        response = s3.get_object(Bucket=CONFIG.s3_cache.meta_file_bucket_name, Key=key)
+        return response["Body"].read()
+    except s3.exceptions.NoSuchKey:
+        return None
+    except Exception as e:
+        LOGGER.warning(f"Failed to get cached file: {e}")
+        return None
 
 
 T = TypeVar("T")  # Generic type variable

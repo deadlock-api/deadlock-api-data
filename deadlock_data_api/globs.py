@@ -15,13 +15,25 @@ CH_POOL = ChPool(
 )
 
 
-def s3_conn():
+def s3_main_conn():
     return boto3.client(
         service_name="s3",
-        region_name=CONFIG.s3.region_name,
-        endpoint_url=CONFIG.s3.endpoint_url,
-        aws_access_key_id=CONFIG.s3.aws_access_key_id,
-        aws_secret_access_key=CONFIG.s3.aws_secret_access_key,
+        region_name=CONFIG.s3_main.region_name,
+        endpoint_url=CONFIG.s3_main.endpoint_url,
+        aws_access_key_id=CONFIG.s3_main.aws_access_key_id,
+        aws_secret_access_key=CONFIG.s3_main.aws_secret_access_key,
+    )
+
+
+def s3_cache_conn():
+    return boto3.client(
+        service_name="s3",
+        region_name=CONFIG.s3_cache.region_name,
+        endpoint_url=CONFIG.s3_cache.endpoint_url,
+        aws_access_key_id=CONFIG.s3_cache.aws_access_key_id,
+        aws_secret_access_key=CONFIG.s3_cache.aws_secret_access_key,
+        aws_session_token=None,
+        config=boto3.session.Config(signature_version="s3v4"),
     )
 
 

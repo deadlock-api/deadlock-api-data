@@ -17,7 +17,7 @@ from valveprotos_py.citadel_gcmessages_common_pb2 import (
 
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.globs import redis_conn, s3_conn
+from deadlock_data_api.globs import s3_main_conn
 from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.player_card import PlayerCard
@@ -41,6 +41,7 @@ from deadlock_data_api.routers.v1_utils import (
     load_builds_by_author,
     load_builds_by_hero,
 )
+from deadlock_data_api.utils import cache_file, get_cached_file
 
 CACHE_AGE_ACTIVE_MATCHES = 20
 CACHE_AGE_BUILDS = 5 * 60
@@ -287,7 +288,7 @@ def get_raw_metadata_file(
     )
     # check if redis has the metadata
     try:
-        meta = redis_conn(decode_responses=False).get(f"metadata:{match_id}")
+        meta = get_cached_file(f"{match_id}.meta.bz2")
         if meta is not None:
             return Response(
                 content=meta,
@@ -298,19 +299,19 @@ def get_raw_metadata_file(
                 },
             )
     except Exception as e:
-        LOGGER.warning(f"Failed to get metadata from redis: {e}")
+        LOGGER.warning(f"Failed to get metadata from cache: {e}")
 
-    bucket = CONFIG.s3.meta_file_bucket_name
+    bucket = CONFIG.s3_main.meta_file_bucket_name
     key = f"processed/metadata/{match_id}.meta.bz2"
     object_exists = True
     try:
-        s3_conn().head_object(Bucket=bucket, Key=key)
+        s3_main_conn().head_object(Bucket=bucket, Key=key)
     except Exception:
         object_exists = False
     if object_exists:
-        obj = s3_conn().get_object(Bucket=bucket, Key=key)
+        obj = s3_main_conn().get_object(Bucket=bucket, Key=key)
         body = obj["Body"].read()
-        redis_conn().set(f"metadata:{match_id}", body, ex=4 * 60 * 60)
+        cache_file(f"{match_id}.meta.bz2", body)
         return Response(
             content=body,
             media_type="application/octet-stream",
@@ -334,13 +335,13 @@ def get_raw_metadata_file(
     metafile = fetch_metadata(match_id, salts)
 
     try:
-        s3_conn().put_object(
+        s3_main_conn().put_object(
             Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
         )
     except Exception:
         LOGGER.error("Failed to upload metadata to s3")
     try:
-        redis_conn().set(f"metadata:{match_id}", metafile, ex=4 * 60 * 60)
+        cache_file(f"{match_id}.meta.bz2", metafile)
     except Exception as e:
         LOGGER.error(f"Failed to cache metadata to redis: {e}")
     return Response(
