@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field
 from valveprotos_py.citadel_gcmessages_client_pb2 import CMsgDevMatchInfo
 
 
@@ -30,17 +30,6 @@ class ActiveMatch(BaseModel):
     match_score: int
     region_mode: int
     compat_version: int | None = Field(None)
-    ranked_badge_level: int | None = Field(None)
-
-    @computed_field
-    @property
-    def ranked_rank(self) -> int | None:
-        return self.ranked_badge_level // 10 if self.ranked_badge_level is not None else None
-
-    @computed_field
-    @property
-    def ranked_subrank(self) -> int | None:
-        return self.ranked_badge_level % 10 if self.ranked_badge_level is not None else None
 
     @classmethod
     def from_msg(cls, msg: CMsgDevMatchInfo) -> "ActiveMatch":
@@ -70,7 +59,6 @@ class ActiveMatch(BaseModel):
             match_score=msg.match_score,
             region_mode=msg.region_mode,
             compat_version=msg.compat_version,
-            ranked_badge_level=msg.ranked_badge_level,
         )
 
 
