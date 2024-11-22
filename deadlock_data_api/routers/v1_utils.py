@@ -11,20 +11,31 @@ from starlette.status import HTTP_404_NOT_FOUND, HTTP_503_SERVICE_UNAVAILABLE
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
     CMsgClientToGCGetActiveMatches,
+    CMsgClientToGCGetLeaderboard,
+    CMsgClientToGCGetLeaderboardResponse,
     CMsgClientToGCGetMatchHistory,
     CMsgClientToGCGetMatchHistoryResponse,
     CMsgClientToGCGetMatchMetaData,
     CMsgClientToGCGetMatchMetaDataResponse,
     CMsgClientToGCGetProfileCard,
     k_EMsgClientToGCGetActiveMatches,
+    k_EMsgClientToGCGetLeaderboard,
     k_EMsgClientToGCGetMatchHistory,
     k_EMsgClientToGCGetMatchMetaData,
     k_EMsgClientToGCGetProfileCard,
+)
+from valveprotos_py.citadel_gcmessages_common_pb2 import (
+    k_ECitadelLeaderboardRegion_Asia,
+    k_ECitadelLeaderboardRegion_Europe,
+    k_ECitadelLeaderboardRegion_NAmerica,
+    k_ECitadelLeaderboardRegion_Oceania,
+    k_ECitadelLeaderboardRegion_SAmerica,
 )
 
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import CH_POOL, postgres_conn
 from deadlock_data_api.models.build import Build
+from deadlock_data_api.models.leaderboard import Leaderboard
 from deadlock_data_api.models.patch_note import PatchNote
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
@@ -374,3 +385,32 @@ def get_player_rank(account_id: int, account_groups: str | None = None) -> Playe
     with CH_POOL.get_client() as client:
         player_card.store_clickhouse(client, account_id)
     return player_card
+
+
+@ttl_cache(ttl=900)
+def get_leaderboard(
+    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+    hero_id: int,
+    account_groups: str | None = None,
+) -> Leaderboard:
+    msg = CMsgClientToGCGetLeaderboard()
+    msg.hero_id = hero_id
+    match region:
+        case "Europe":
+            msg.leaderboard_region = k_ECitadelLeaderboardRegion_Europe
+        case "Asia":
+            msg.leaderboard_region = k_ECitadelLeaderboardRegion_Asia
+        case "NAmerica":
+            msg.leaderboard_region = k_ECitadelLeaderboardRegion_NAmerica
+        case "SAmerica":
+            msg.leaderboard_region = k_ECitadelLeaderboardRegion_SAmerica
+        case "Oceania":
+            msg.leaderboard_region = k_ECitadelLeaderboardRegion_Oceania
+    msg = call_steam_proxy(
+        k_EMsgClientToGCGetLeaderboard,
+        msg,
+        CMsgClientToGCGetLeaderboardResponse,
+        10,
+        account_groups.split(",") if account_groups else ["LowRateLimitApis"],
+    )
+    return Leaderboard.from_msg(msg)

@@ -20,6 +20,7 @@ from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import s3_main_conn
 from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.build import Build
+from deadlock_data_api.models.leaderboard import Leaderboard
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
     PlayerMatchHistoryEntry,
@@ -30,6 +31,7 @@ from deadlock_data_api.routers.v1_utils import (
     fetch_active_matches_raw,
     fetch_metadata,
     fetch_patch_notes,
+    get_leaderboard,
     get_match_salts_from_db,
     get_match_salts_from_steam,
     get_match_start_time,
@@ -227,6 +229,31 @@ def player_rank(
         account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
     )
     return get_player_rank(account_id, account_groups)
+
+
+@router.get(
+    "/leaderboard/{region}/{hero_id}",
+    response_model_exclude_none=True,
+    summary="Rate Limit 100req/s",
+)
+def leaderboard(
+    req: Request,
+    res: Response,
+    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+    hero_id: int,
+    account_groups: str = None,
+) -> Leaderboard:
+    limiter.apply_limits(
+        req,
+        res,
+        "/v1/leaderboard/{region}/{hero_id}",
+        [RateLimit(limit=100, period=1)],
+    )
+    res.headers["Cache-Control"] = "public, max-age=900"
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
+    )
+    return get_leaderboard(region, hero_id, account_groups)
 
 
 @router.get(
