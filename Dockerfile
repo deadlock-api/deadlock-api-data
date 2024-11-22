@@ -19,4 +19,4 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --frozen
 
-CMD ["uv", "run", "granian", "--interface", "asgi", "--ws", "--host", "0.0.0.0", "--port", "8080", "--threads", "32", "deadlock_data_api.main:app"]
+CMD ["uv", "run", "granian", "--interface", "asgi", "--ws", "--host", "0.0.0.0", "--port", "8080", "--workers", "32", "deadlock_data_api.main:app"]
