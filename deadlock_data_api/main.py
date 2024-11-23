@@ -121,19 +121,29 @@ def webhook_subscribe(
             (subscription_id, api_key, webhook_config.webhook_url),
         )
         cursor.execute("COMMIT")
-    return {"status": "success"}
+    return {"status": "success", "subscription_id": subscription_id}
 
 
-@app.delete("/matches/webhook/unsubscribe", summary="1 Webhook per API-Key", tags=["Webhooks"])
-def webhook_unsubscribe(api_key=Depends(utils.get_api_key)):
+@app.delete(
+    "/matches/webhook/{subscription_id}/unsubscribe",
+    summary="1 Webhook per API-Key",
+    tags=["Webhooks"],
+)
+def webhook_unsubscribe(subscription_id: str, api_key=Depends(utils.get_api_key)):
     print(f"Authenticated with API-Key: {api_key}")
     with postgres_conn().cursor() as cursor:
-        cursor.execute("SELECT subscription_id FROM webhooks WHERE api_key = %s", (api_key,))
+        cursor.execute(
+            "SELECT 1 FROM webhooks WHERE api_key = %s AND subscription_id = %s",
+            (api_key, subscription_id),
+        )
         result = cursor.fetchone()
         if result is None:
             raise HTTPException(status_code=400, detail="Webhook does not exist")
-        utils.unsubscribe_webhook(result[0])
-        cursor.execute("DELETE FROM webhooks WHERE api_key = %s", (api_key,))
+        utils.unsubscribe_webhook(subscription_id)
+        cursor.execute(
+            "DELETE FROM webhooks WHERE api_key = %s AND subscription_id = %s",
+            (api_key, subscription_id),
+        )
         cursor.execute("COMMIT")
     return {"status": "success"}
 
