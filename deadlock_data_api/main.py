@@ -1,14 +1,18 @@
 import logging
 import os
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
+from pydantic import BaseModel, Field
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import PlainTextResponse, RedirectResponse
 
+from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
+from deadlock_data_api.globs import postgres_conn
 from deadlock_data_api.routers import base, live, v1, v2
+from deadlock_data_api.utils import send_webhook_event
 
 # Doesn't use AppConfig because logging is critical
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
@@ -69,6 +73,77 @@ def head_health():
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
 def get_robots() -> str:
     return "User-Agent: *\nDisallow: /\nAllow: /docs\nAllow: /\n"
+
+
+class ObjectUploadedEvent(BaseModel):
+    key: str = Field(..., validation_alias="Key")
+
+
+class MatchCreatedWebhookPayload(BaseModel):
+    match_id: int
+    metadata_url: str
+    raw_metadata_url: str
+
+
+@app.post("/matches/created", tags=["Webhooks"], include_in_schema=False)
+def match_created_event(object_uploaded_event: ObjectUploadedEvent):
+    match_id = int(object_uploaded_event.key.split("/")[-1].split(".")[0])
+    payload = MatchCreatedWebhookPayload(
+        match_id=match_id,
+        metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/metadata",
+        raw_metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/raw-metadata",
+    )
+    send_webhook_event("match.metadata.created", payload.model_dump_json())
+    return {"status": "success"}
+
+
+class WebhookSubscribeRequest(BaseModel):
+    webhook_url: str
+
+
+@app.post("/matches/webhook/subscribe", summary="1 Webhook per API-Key", tags=["Webhooks"])
+def webhook_subscribe(
+    webhook_config: WebhookSubscribeRequest,
+    api_key=Depends(utils.get_api_key),
+):
+    print(f"Authenticated with API-Key: {api_key}")
+    api_key = api_key.lstrip("HEXE-")
+    with postgres_conn().cursor() as cursor:
+        cursor.execute("SELECT 1 FROM webhooks WHERE api_key = %s", (api_key,))
+        result = cursor.fetchone()
+        if result is not None:
+            raise HTTPException(status_code=400, detail="Webhook already exists")
+        subscription_id = utils.subscribe_webhook(
+            webhook_config.webhook_url, ["match.metadata.created"]
+        )
+        cursor.execute(
+            "INSERT INTO webhooks (subscription_id, api_key, webhook_url) VALUES (%s, %s, %s)",
+            (subscription_id, api_key, webhook_config.webhook_url),
+        )
+        cursor.execute("COMMIT")
+    return {"status": "success"}
+
+
+@app.delete("/matches/webhook/unsubscribe", summary="1 Webhook per API-Key", tags=["Webhooks"])
+def webhook_unsubscribe(api_key=Depends(utils.get_api_key)):
+    print(f"Authenticated with API-Key: {api_key}")
+    with postgres_conn().cursor() as cursor:
+        cursor.execute("SELECT subscription_id FROM webhooks WHERE api_key = %s", (api_key,))
+        result = cursor.fetchone()
+        if result is None:
+            raise HTTPException(status_code=400, detail="Webhook does not exist")
+        utils.unsubscribe_webhook(result[0])
+        cursor.execute("DELETE FROM webhooks WHERE api_key = %s", (api_key,))
+        cursor.execute("COMMIT")
+    return {"status": "success"}
+
+
+@app.webhooks.post("match-metadata-created")
+def match_metadata_created() -> MatchCreatedWebhookPayload:
+    """
+    Webhook for when a match metadata is created.
+    """
+    pass
 
 
 if __name__ == "__main__":

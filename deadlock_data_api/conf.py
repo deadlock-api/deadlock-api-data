@@ -106,6 +106,21 @@ class SteamProxyConfig:
 
 
 @dataclass
+class HOOK0Config:
+    api_url: str
+    application_id: str
+    api_key: str
+
+    @classmethod
+    def from_env(cls) -> "HOOK0Config":
+        return cls(
+            api_url=os.environ.get("HOOK0_API_URL", "https://webhook-api.deadlock-api.com/api/v1"),
+            application_id=os.environ.get("HOOK0_APPLICATION_ID"),
+            api_key=os.environ.get("HOOK0_API_KEY"),
+        )
+
+
+@dataclass
 class AppConfig:
     clickhouse: ClickhouseConfig
     redis: RedisConfig
@@ -113,6 +128,7 @@ class AppConfig:
     s3_main: S3Config
     s3_cache: S3Config
     kafka: KafkaConfig
+    hook0: HOOK0Config
     steam_proxy: SteamProxyConfig | None
     discord_webhook_url: str | None
     emergency_mode: bool
@@ -131,6 +147,7 @@ class AppConfig:
             s3_main=S3Config.from_env("MAIN"),
             s3_cache=S3Config.from_env("CACHE"),
             kafka=KafkaConfig.from_env(),
+            hook0=HOOK0Config.from_env(),
             steam_proxy=SteamProxyConfig.from_env(),
             discord_webhook_url=os.environ.get("DISCORD_WEBHOOK_URL"),
             emergency_mode=os.environ.get("EMERGENCY_MODE") == "true",

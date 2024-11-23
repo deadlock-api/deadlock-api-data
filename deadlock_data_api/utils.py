@@ -1,6 +1,7 @@
 import logging
 import uuid
 from base64 import b64decode, b64encode
+from datetime import datetime
 from typing import TypeVar
 
 import requests
@@ -246,3 +247,49 @@ def notnone(value: T | None, message: str = "Value cannot be None") -> T:
     """
     assert value is not None, message
     return value
+
+
+def subscribe_webhook(webhook_url: str, event_types: list[str]) -> str:
+    response = requests.post(
+        f"{CONFIG.hook0.api_url}/subscriptions",
+        json={
+            "application_id": CONFIG.hook0.application_id,
+            "event_types": event_types,
+            "is_enabled": True,
+            "label_key": "all",
+            "label_value": "yes",
+            "target": {
+                "type": "http",
+                "method": "POST",
+                "url": webhook_url,
+                "headers": {"Content-Type": "application/json"},
+            },
+        },
+        headers={"Authorization": f"Bearer {CONFIG.hook0.api_key}"},
+    )
+    response.raise_for_status()
+    return response.json()["subscription_id"]
+
+
+def unsubscribe_webhook(subscription_id: str):
+    requests.delete(
+        f"{CONFIG.hook0.api_url}/subscriptions/{subscription_id}",
+        params={"application_id": CONFIG.hook0.application_id},
+        headers={"Authorization": f"Bearer {CONFIG.hook0.api_key}"},
+    ).raise_for_status()
+
+
+def send_webhook_event(event_type: str, data: str):
+    requests.post(
+        f"{CONFIG.hook0.api_url}/event",
+        json={
+            "application_id": CONFIG.hook0.application_id,
+            "event_id": str(uuid.uuid4()),
+            "event_type": event_type,
+            "labels": {"all": "yes"},
+            "occurred_at": f"{datetime.now().isoformat()}Z",
+            "payload_content_type": "application/json",
+            "payload": data,
+        },
+        headers={"Authorization": f"Bearer {CONFIG.hook0.api_key}"},
+    ).raise_for_status()
