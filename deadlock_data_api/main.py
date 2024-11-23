@@ -124,6 +124,21 @@ def webhook_subscribe(
     return {"status": "success", "subscription_id": subscription_id}
 
 
+@app.get(
+    "/matches/webhook",
+    tags=["Webhooks"],
+)
+def webhook_list(api_key=Depends(utils.get_api_key)):
+    print(f"Authenticated with API-Key: {api_key}")
+    api_key = api_key.lstrip("HEXE-")
+    with postgres_conn().cursor() as cursor:
+        cursor.execute(
+            "SELECT subscription_id, webhook_url FROM webhooks WHERE api_key = %s", (api_key,)
+        )
+        result = cursor.fetchall()
+    return [{"subscription_id": row[0], "webhook_url": row[1]} for row in result]
+
+
 @app.delete(
     "/matches/webhook/{subscription_id}/unsubscribe",
     summary="1 Webhook per API-Key",
