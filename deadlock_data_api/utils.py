@@ -249,7 +249,7 @@ def notnone(value: T | None, message: str = "Value cannot be None") -> T:
     return value
 
 
-def subscribe_webhook(webhook_url: str, event_types: list[str]) -> str:
+def subscribe_webhook(webhook_url: str, event_types: list[str]) -> dict:
     response = requests.post(
         f"{CONFIG.hook0.api_url}/subscriptions",
         json={
@@ -268,7 +268,7 @@ def subscribe_webhook(webhook_url: str, event_types: list[str]) -> str:
         headers={"Authorization": f"Bearer {CONFIG.hook0.api_key}"},
     )
     response.raise_for_status()
-    return response.json()["subscription_id"]
+    return response.json()
 
 
 def unsubscribe_webhook(subscription_id: str):

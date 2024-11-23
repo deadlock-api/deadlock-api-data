@@ -113,15 +113,20 @@ def webhook_subscribe(
         result = cursor.fetchone()
         if result is not None:
             raise HTTPException(status_code=400, detail="Webhook already exists")
-        subscription_id = utils.subscribe_webhook(
+        subscription = utils.subscribe_webhook(
             webhook_config.webhook_url, ["match.metadata.created"]
         )
         cursor.execute(
             "INSERT INTO webhooks (subscription_id, api_key, webhook_url) VALUES (%s, %s, %s)",
-            (subscription_id, api_key, webhook_config.webhook_url),
+            (subscription["subscription_id"], api_key, webhook_config.webhook_url),
         )
         cursor.execute("COMMIT")
-    return {"status": "success", "subscription_id": subscription_id}
+    return {
+        "status": "success",
+        "subscription_id": subscription["subscription_id"],
+        "event_types": subscription["event_types"],
+        "secret": subscription["secret"],
+    }
 
 
 @app.get(
@@ -167,6 +172,8 @@ def webhook_unsubscribe(subscription_id: str, api_key=Depends(utils.get_api_key)
 def match_metadata_created() -> MatchCreatedWebhookPayload:
     """
     Webhook for when a match metadata is created.
+
+    To verify the webhook read this: https://documentation.hook0.com/docs/verifying-webhook-signatures
     """
     pass
 
