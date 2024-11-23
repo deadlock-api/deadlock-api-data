@@ -298,7 +298,7 @@ Protobuf definitions can be found here: [https://github.com/SteamDatabase/Protob
 
 At the moment the rate limits are quite strict, as we are serving it from an s3 with egress costs, but that may change.
     """,
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /metadata",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /metadata",
 )
 def get_raw_metadata_file(
     req: Request, res: Response, match_id: int, account_groups: str | None = None
@@ -308,7 +308,7 @@ def get_raw_metadata_file(
         res,
         "/v1/matches/{match_id}/metadata",
         [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
-        [RateLimit(limit=20, period=1)],
+        [RateLimit(limit=100, period=1)],
     )
     account_groups = utils.validate_account_groups(
         account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
@@ -354,7 +354,7 @@ def get_raw_metadata_file(
             res,
             "/v1/matches/{match_id}/metadata#steam",
             [RateLimit(limit=1, period=60), RateLimit(limit=10, period=3600)],
-            [RateLimit(limit=20, period=1)],
+            [RateLimit(limit=100, period=1)],
             [RateLimit(limit=3000, period=3600)],
         )
         salts = get_match_salts_from_steam(match_id, account_groups=account_groups)
@@ -383,7 +383,7 @@ def get_raw_metadata_file(
 
 @router.get(
     "/matches/{match_id}/metadata",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /raw-metadata",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /raw-metadata",
 )
 async def get_metadata(
     req: Request, res: Response, match_id: int, account_groups: str | None = None
@@ -400,7 +400,7 @@ async def get_metadata(
 
 @router.get(
     "/matches/{match_id}/demo-url",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 20req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s",
 )
 def get_demo_url(
     req: Request, res: Response, match_id: int, account_groups: str | None = None
@@ -410,7 +410,7 @@ def get_demo_url(
         res,
         "/v1/matches/{match_id}/demo-url",
         [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
-        [RateLimit(limit=20, period=1)],
+        [RateLimit(limit=100, period=1)],
     )
     account_groups = utils.validate_account_groups(
         account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
