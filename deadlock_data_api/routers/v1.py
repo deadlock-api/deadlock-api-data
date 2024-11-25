@@ -232,11 +232,35 @@ def player_rank(
 
 
 @router.get(
-    "/leaderboard/{region}/{hero_id}",
+    "/leaderboard/{region}",
     response_model_exclude_none=True,
     summary="Rate Limit 100req/s",
 )
 def leaderboard(
+    req: Request,
+    res: Response,
+    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+    account_groups: str = None,
+) -> Leaderboard:
+    limiter.apply_limits(
+        req,
+        res,
+        "/v1/leaderboard/{region}",
+        [RateLimit(limit=100, period=1)],
+    )
+    res.headers["Cache-Control"] = "public, max-age=900"
+    account_groups = utils.validate_account_groups(
+        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
+    )
+    return get_leaderboard(region, None, account_groups)
+
+
+@router.get(
+    "/leaderboard/{region}/{hero_id}",
+    response_model_exclude_none=True,
+    summary="Rate Limit 100req/s",
+)
+def hero_leaderboard(
     req: Request,
     res: Response,
     region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],

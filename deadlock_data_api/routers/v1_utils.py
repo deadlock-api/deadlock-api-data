@@ -390,7 +390,7 @@ def get_player_rank(account_id: int, account_groups: str | None = None) -> Playe
 @ttl_cache(ttl=900)
 def get_leaderboard(
     region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
-    hero_id: int,
+    hero_id: int | None = None,
     account_groups: str | None = None,
 ) -> Leaderboard:
     msg = CMsgClientToGCGetLeaderboard()
