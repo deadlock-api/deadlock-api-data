@@ -394,7 +394,8 @@ def get_leaderboard(
     account_groups: str | None = None,
 ) -> Leaderboard:
     msg = CMsgClientToGCGetLeaderboard()
-    msg.hero_id = hero_id
+    if hero_id is not None:
+        msg.hero_id = hero_id
     match region:
         case "Europe":
             msg.leaderboard_region = k_ECitadelLeaderboardRegion_Europe
