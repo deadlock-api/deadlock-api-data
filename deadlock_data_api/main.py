@@ -1,6 +1,5 @@
 import logging
 import os
-from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -51,10 +50,9 @@ app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
 instrumentator = Instrumentator().instrument(app)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    instrumentator.instrument(app).expose(app, include_in_schema=False)
-    yield
+@app.on_event("startup")
+async def _startup():
+    instrumentator.expose(app)
 
 
 app.include_router(v2.router)
