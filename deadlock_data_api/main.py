@@ -47,12 +47,12 @@ app.add_middleware(
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
 
-instrumentator = Instrumentator().instrument(app)
+instrumentator = Instrumentator(should_group_status_codes=False).instrument(app)
 
 
 @app.on_event("startup")
 async def _startup():
-    instrumentator.expose(app)
+    instrumentator.expose(app, include_in_schema=False)
 
 
 app.include_router(v2.router)
