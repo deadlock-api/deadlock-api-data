@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +29,14 @@ if CONFIG.sentry_dsn:
         },
     )
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    instrumentor = Instrumentator(should_group_status_codes=False)
+    instrumentor.instrument(app).expose(app, include_in_schema=False)
+    yield
+
+
 app = FastAPI(
     title="Data - Deadlock API",
     description="""
@@ -37,6 +46,7 @@ API for Deadlock game data, containing builds and active matches.
 
 _deadlock-api.com is not endorsed by Valve and does not reflect the views or opinions of Valve or anyone officially involved in producing or managing Valve properties. Valve and all associated properties are trademarks or registered trademarks of Valve Corporation_
 """,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -46,9 +56,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
-
-Instrumentator(should_group_status_codes=False).instrument(app).expose(app, include_in_schema=False)
-
 app.include_router(v2.router)
 app.include_router(v1.router)
 app.include_router(live.router)
