@@ -356,7 +356,7 @@ def fetch_active_matches_raw(account_groups: str | None = None, retries: int = 3
                 return snappy.decompress(msg[7:])
             except Exception as e:
                 if attempts >= retries:
-                    raise Exception(e)
+                    raise e
                 msg = f"Failed to fetch active matches: {e.response.status_code if isinstance(e, requests.exceptions.HTTPError) else type(e).__name__}"
                 LOGGER.exception(msg)
     except Exception as e:
