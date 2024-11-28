@@ -341,24 +341,27 @@ def load_build_version(build_id: int, version: int) -> Build:
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
-def fetch_active_matches_raw(account_groups: str | None = None) -> bytes:
+def fetch_active_matches_raw(account_groups: str | None = None, retries: int = 3) -> bytes:
     try:
-        msg = call_steam_proxy_raw(
-            k_EMsgClientToGCGetActiveMatches,
-            CMsgClientToGCGetActiveMatches(),
-            10,
-            account_groups.split(",") if account_groups else ["LowRateLimitApis"],
-        )
-        return snappy.decompress(msg[7:])
+        attempts = 0
+        while True:
+            attempts += 1
+            try:
+                msg = call_steam_proxy_raw(
+                    k_EMsgClientToGCGetActiveMatches,
+                    CMsgClientToGCGetActiveMatches(),
+                    10,
+                    account_groups.split(",") if account_groups else ["LowRateLimitApis"],
+                )
+                return snappy.decompress(msg[7:])
+            except Exception as e:
+                if attempts >= retries:
+                    raise Exception(e)
+                msg = f"Failed to fetch active matches: {e.response.status_code if isinstance(e, requests.exceptions.HTTPError) else type(e).__name__}"
+                LOGGER.exception(msg)
     except Exception as e:
-        if isinstance(e, requests.exceptions.HTTPError):
-            send_webhook_message(
-                f"Failed to fetch active matches: HTTPError: {e.response.status_code}",
-            )
-            LOGGER.exception(f"Failed to fetch active matches: HTTPError: {e.response.status_code}")
-        else:
-            send_webhook_message(f"Failed to fetch active matches: {type(e).__name__}")
-            LOGGER.exception(f"Failed to fetch active matches: {type(e).__name__}")
+        msg = f"Failed to fetch active matches: {e.response.status_code if isinstance(e, requests.exceptions.HTTPError) else type(e).__name__}"
+        send_webhook_message(msg)
         raise HTTPException(status_code=500, detail="Failed to fetch active matches")
 
 
