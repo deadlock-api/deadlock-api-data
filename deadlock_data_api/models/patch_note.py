@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -33,7 +33,7 @@ class PatchNote(BaseModel):
 
     @field_validator("pub_date", mode="before")
     @classmethod
-    def validate_pub_date(cls, value):
+    def validate_pub_date(cls, value: str | datetime) -> datetime:
         if isinstance(value, str):
-            return parsedate_to_datetime(value)
-        return value
+            value = parsedate_to_datetime(value)
+        return value.astimezone(UTC)
