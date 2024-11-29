@@ -60,10 +60,23 @@ def call_steam_proxy(
     groups: list[str],
     cache_time: int | None = None,
 ) -> R:
+    try:
+        cache_key = f"{msg_type}:{msg.SerializeToString().hex()}"
+        cached_value = redis_conn(decode_responses=False).get(cache_key)
+        if cached_value:
+            return response_type.FromString(cached_value)
+    except Exception as e:
+        LOGGER.warning(f"Failed to parse cached value: {e}")
+
     MAX_RETRIES = 3
     for i in range(MAX_RETRIES):
         try:
-            data = call_steam_proxy_raw(msg_type, msg, cooldown_time, groups, cache_time)
+            data = call_steam_proxy_raw(msg_type, msg, cooldown_time, groups)
+            try:
+                if cache_time:
+                    redis_conn().setex(cache_key, cache_time, data)
+            except Exception as e:
+                LOGGER.warning(f"Failed to cache value: {e}")
             return response_type.FromString(data)
         except Exception as e:
             LOGGER.warning(f"Failed to call Steam proxy: {e}")
@@ -73,22 +86,9 @@ def call_steam_proxy(
 
 
 def call_steam_proxy_raw(
-    msg_type: int,
-    msg: Message,
-    cooldown_time: int,
-    groups: list[str],
-    cache_time: int | None = None,
+    msg_type: int, msg: Message, cooldown_time: int, groups: list[str]
 ) -> bytes:
     assert CONFIG.steam_proxy, "SteamProxyConfig must be configured to call the proxy"
-
-    cache_key = f"{msg_type}:{msg.SerializeToString().hex()}"
-    try:
-        if cache_time is not None:
-            cached_value = redis_conn(decode_responses=False).get(cache_key)
-            if cached_value:
-                return cached_value
-    except Exception as e:
-        LOGGER.warning(f"Failed to parse cached value: {e}")
 
     msg_data = b64encode(msg.SerializeToString()).decode("utf-8")
     body = {
@@ -107,11 +107,6 @@ def call_steam_proxy_raw(
     except HTTPError as e:
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     data = response.json()["data"]
-    try:
-        if cache_time:
-            redis_conn().setex(cache_key, cache_time, data)
-    except Exception as e:
-        LOGGER.warning(f"Failed to cache value: {e}")
     return b64decode(data)
 
 
