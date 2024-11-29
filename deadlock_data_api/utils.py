@@ -19,7 +19,7 @@ from starlette.status import (
 )
 
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.globs import postgres_conn, s3_cache_conn
+from deadlock_data_api.globs import postgres_conn, redis_conn, s3_cache_conn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -58,11 +58,25 @@ def call_steam_proxy(
     response_type: type[R],
     cooldown_time: int,
     groups: list[str],
+    cache_time: int | None = None,
 ) -> R:
+    try:
+        cache_key = f"{msg_type}:{msg.SerializeToString().hex()}"
+        cached_value = redis_conn(decode_responses=False).get(cache_key)
+        if cached_value:
+            return response_type.FromString(cached_value)
+    except Exception as e:
+        LOGGER.warning(f"Failed to parse cached value: {e}")
+
     MAX_RETRIES = 3
     for i in range(MAX_RETRIES):
         try:
             data = call_steam_proxy_raw(msg_type, msg, cooldown_time, groups)
+            try:
+                if cache_time:
+                    redis_conn().setex(cache_key, cache_time, data)
+            except Exception as e:
+                LOGGER.warning(f"Failed to cache value: {e}")
             return response_type.FromString(data)
         except Exception as e:
             LOGGER.warning(f"Failed to call Steam proxy: {e}")

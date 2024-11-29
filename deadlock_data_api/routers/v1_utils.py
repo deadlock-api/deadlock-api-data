@@ -55,7 +55,6 @@ LOAD_FILE_RETRIES = 5
 LOGGER = logging.getLogger(__name__)
 
 
-@ttl_cache(ttl=900)
 def get_player_match_history(
     account_id: int, continue_cursor: int | None = None, account_groups: str | None = None
 ) -> PlayerMatchHistory:
@@ -74,6 +73,7 @@ def get_player_match_history(
         CMsgClientToGCGetMatchHistoryResponse,
         15_000,  # 4 per minute
         account_groups.split(",") if account_groups else ["GetMatchHistory"],
+        900,
     )
     match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
     match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
@@ -110,7 +110,6 @@ def get_match_start_time(match_id: int) -> datetime | None:
     return result[0][0] if result else None
 
 
-@ttl_cache(ttl=60 * 60)
 def get_match_salts_from_steam(
     match_id: int, need_demo: bool = False, account_groups: str | None = None
 ) -> CMsgClientToGCGetMatchMetaDataResponse:
@@ -127,6 +126,7 @@ def get_match_salts_from_steam(
         CMsgClientToGCGetMatchMetaDataResponse,
         576_000 if not account_groups else 1,  # 25 per 4 hours
         account_groups.split(",") if account_groups else ["GetMatchMetaData"],
+        3600,
     )
     if msg.metadata_salt == 0 or (need_demo and msg.replay_salt == 0):
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Match not found")
@@ -373,7 +373,6 @@ def fetch_patch_notes() -> list[PatchNote]:
     return [PatchNote.model_validate(item) for item in items]
 
 
-@ttl_cache(ttl=900)
 def get_player_rank(account_id: int, account_groups: str | None = None) -> PlayerCard:
     msg = CMsgClientToGCGetProfileCard()
     msg.account_id = account_id
@@ -383,6 +382,7 @@ def get_player_rank(account_id: int, account_groups: str | None = None) -> Playe
         CMsgCitadelProfileCard,
         10,
         account_groups.split(",") if account_groups else ["LowRateLimitApis"],
+        900,
     )
     player_card = PlayerCard.from_msg(msg)
     with CH_POOL.get_client() as client:
@@ -390,7 +390,6 @@ def get_player_rank(account_id: int, account_groups: str | None = None) -> Playe
     return player_card
 
 
-@ttl_cache(ttl=900)
 def get_leaderboard(
     region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
     hero_id: int | None = None,
@@ -416,5 +415,6 @@ def get_leaderboard(
         CMsgClientToGCGetLeaderboardResponse,
         10,
         account_groups.split(",") if account_groups else ["LowRateLimitApis"],
+        900,
     )
     return Leaderboard.from_msg(msg)
