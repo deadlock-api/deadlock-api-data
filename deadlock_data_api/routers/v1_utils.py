@@ -340,7 +340,6 @@ def load_build_version(build_id: int, version: int) -> Build:
         return Build.model_validate(result[0])
 
 
-@ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
 def fetch_active_matches_raw(account_groups: str | None = None, retries: int = 3) -> bytes:
     try:
         attempts = 0
@@ -352,6 +351,7 @@ def fetch_active_matches_raw(account_groups: str | None = None, retries: int = 3
                     CMsgClientToGCGetActiveMatches(),
                     10,
                     account_groups.split(",") if account_groups else ["LowRateLimitApis"],
+                    CACHE_AGE_ACTIVE_MATCHES,
                 )
                 return snappy.decompress(msg[7:])
             except Exception as e:
