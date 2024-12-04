@@ -320,6 +320,8 @@ You have to decompress it and decode the protobuf message.
 
 Protobuf definitions can be found here: [https://github.com/SteamDatabase/Protobufs](https://github.com/SteamDatabase/Protobufs)
 
+Relevant Protobuf Messages: CMsgMatchMetaData, CMsgMatchMetaDataContents
+
 At the moment the rate limits are quite strict, as we are serving it from an s3 with egress costs, but that may change.
     """,
     summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /metadata",
@@ -337,9 +339,10 @@ def get_raw_metadata_file(
     account_groups = utils.validate_account_groups(
         account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
     )
-    # check if redis has the metadata
     try:
         meta = get_cached_file(f"{match_id}.meta.bz2")
+        if meta is None:
+            meta = get_cached_file(f"{match_id}.meta_hltv.bz2")
         if meta is not None:
             return Response(
                 content=meta,
@@ -353,13 +356,18 @@ def get_raw_metadata_file(
         LOGGER.warning(f"Failed to get metadata from cache: {e}")
 
     bucket = CONFIG.s3_main.meta_file_bucket_name
-    key = f"processed/metadata/{match_id}.meta.bz2"
-    object_exists = True
-    try:
-        s3_main_conn().head_object(Bucket=bucket, Key=key)
-    except Exception:
-        object_exists = False
-    if object_exists:
+    possible_keys = [
+        f"processed/metadata/{match_id}.meta.bz2",
+        f"processed/metadata/{match_id}.meta_hltv.bz2",
+    ]
+    key = None
+    for test_key in possible_keys:
+        try:
+            s3_main_conn().head_object(Bucket=bucket, Key=test_key)
+            key = test_key
+        except Exception:
+            pass
+    if key is not None:
         obj = s3_main_conn().get_object(Bucket=bucket, Key=key)
         body = obj["Body"].read()
         cache_file(f"{match_id}.meta.bz2", body)
