@@ -25,10 +25,7 @@ if CONFIG.sentry_dsn:
 
     sentry_sdk.init(
         dsn=CONFIG.sentry_dsn,
-        traces_sample_rate=0.2,
-        _experiments={
-            "continuous_profiling_auto_start": True,
-        },
+        traces_sample_rate=0.01,
     )
 
 app = FastAPI(
