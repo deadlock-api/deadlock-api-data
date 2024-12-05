@@ -321,8 +321,6 @@ You have to decompress it and decode the protobuf message.
 Protobuf definitions can be found here: [https://github.com/SteamDatabase/Protobufs](https://github.com/SteamDatabase/Protobufs)
 
 Relevant Protobuf Messages: CMsgMatchMetaData, CMsgMatchMetaDataContents
-
-At the moment the rate limits are quite strict, as we are serving it from an s3 with egress costs, but that may change.
     """,
     summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /metadata",
 )
