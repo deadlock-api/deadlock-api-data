@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from google.protobuf.json_format import MessageToDict
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -309,6 +309,22 @@ def get_raw_metadata_file_old(match_id: int):
     return RedirectResponse(url=f"/v1/matches/{match_id}/raw-metadata", status_code=301)
 
 
+def cache_metadata_background(match_id: int, metafile: bytes, upload_to_main: bool = False):
+    if upload_to_main:
+        try:
+            s3_main_conn().put_object(
+                Bucket=CONFIG.s3_main.meta_file_bucket_name,
+                Key=f"ingest/metadata/{match_id}.meta.bz2",
+                Body=metafile,
+            )
+        except Exception:
+            LOGGER.error("Failed to upload metadata to s3")
+    try:
+        cache_file(f"{match_id}.meta.bz2", metafile)
+    except Exception as e:
+        LOGGER.error(f"Failed to cache metadata: {e}")
+
+
 @router.get(
     "/matches/{match_id}/raw-metadata",
     description="""
@@ -322,10 +338,14 @@ Protobuf definitions can be found here: [https://github.com/SteamDatabase/Protob
 
 Relevant Protobuf Messages: CMsgMatchMetaData, CMsgMatchMetaDataContents
     """,
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /metadata",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 100req/s, Shared Rate Limit with /metadata",
 )
 def get_raw_metadata_file(
-    req: Request, res: Response, match_id: int, account_groups: str | None = None
+    req: Request,
+    res: Response,
+    background_tasks: BackgroundTasks,
+    match_id: int,
+    account_groups: str | None = None,
 ) -> Response:
     limiter.apply_limits(
         req,
@@ -353,7 +373,6 @@ def get_raw_metadata_file(
     except Exception as e:
         LOGGER.warning(f"Failed to get metadata from cache: {e}")
 
-    bucket = CONFIG.s3_main.meta_file_bucket_name
     possible_keys = [
         f"processed/metadata/{match_id}.meta.bz2",
         f"processed/metadata/{match_id}.meta_hltv.bz2",
@@ -361,14 +380,14 @@ def get_raw_metadata_file(
     key = None
     for test_key in possible_keys:
         try:
-            s3_main_conn().head_object(Bucket=bucket, Key=test_key)
+            s3_main_conn().head_object(Bucket=CONFIG.s3_main.meta_file_bucket_name, Key=test_key)
             key = test_key
         except Exception:
             pass
     if key is not None:
-        obj = s3_main_conn().get_object(Bucket=bucket, Key=key)
+        obj = s3_main_conn().get_object(Bucket=CONFIG.s3_main.meta_file_bucket_name, Key=key)
         body = obj["Body"].read()
-        cache_file(f"{match_id}.meta.bz2", body)
+        background_tasks.add_task(cache_metadata_background, match_id, body)
         return Response(
             content=body,
             media_type="application/octet-stream",
@@ -388,19 +407,8 @@ def get_raw_metadata_file(
             [RateLimit(limit=3000, period=3600)],
         )
         salts = get_match_salts_from_steam(match_id, account_groups=account_groups)
-
     metafile = fetch_metadata(match_id, salts)
-
-    try:
-        s3_main_conn().put_object(
-            Bucket=bucket, Key=f"ingest/metadata/{match_id}.meta.bz2", Body=metafile
-        )
-    except Exception:
-        LOGGER.error("Failed to upload metadata to s3")
-    try:
-        cache_file(f"{match_id}.meta.bz2", metafile)
-    except Exception as e:
-        LOGGER.error(f"Failed to cache metadata to redis: {e}")
+    background_tasks.add_task(cache_metadata_background, match_id, metafile, True)
     return Response(
         content=metafile,
         media_type="application/octet-stream",
@@ -413,15 +421,19 @@ def get_raw_metadata_file(
 
 @router.get(
     "/matches/{match_id}/metadata",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s, Shared Rate Limit with /raw-metadata",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 100req/s, Shared Rate Limit with /raw-metadata",
 )
 async def get_metadata(
-    req: Request, res: Response, match_id: int, account_groups: str | None = None
+    req: Request,
+    res: Response,
+    background_tasks: BackgroundTasks,
+    match_id: int,
+    account_groups: str | None = None,
 ) -> JSONResponse:
     account_groups = utils.validate_account_groups(
         account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
     )
-    raw_metadata = get_raw_metadata_file(req, res, match_id, account_groups).body
+    raw_metadata = get_raw_metadata_file(req, res, background_tasks, match_id, account_groups).body
     raw_metadata_decompressed = bz2.decompress(raw_metadata)
     metadata = CMsgMatchMetaData.FromString(raw_metadata_decompressed)
     match_contents = CMsgMatchMetaDataContents.FromString(metadata.match_details)
