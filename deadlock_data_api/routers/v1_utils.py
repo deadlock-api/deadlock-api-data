@@ -413,7 +413,7 @@ def get_leaderboard(
         k_EMsgClientToGCGetLeaderboard,
         msg,
         CMsgClientToGCGetLeaderboardResponse,
-        10,
+        60 * 1000,
         account_groups.split(",") if account_groups else ["LowRateLimitApis"],
         900,
     )
