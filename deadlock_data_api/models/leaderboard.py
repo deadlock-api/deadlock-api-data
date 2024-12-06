@@ -7,12 +7,19 @@ class LeaderboardEntry(BaseModel):
 
     account_name: str
     rank: int
+    badge_level: int
+    top_hero_ids: list[int]
 
     @classmethod
     def from_msg(
         cls, msg: CMsgClientToGCGetLeaderboardResponse.LeaderboardEntry
     ) -> "LeaderboardEntry":
-        return cls(account_name=msg.account_name, rank=msg.rank)
+        return cls(
+            account_name=msg.account_name,
+            rank=msg.rank,
+            badge_level=msg.badge_level,
+            top_hero_ids=msg.top_hero_ids,
+        )
 
 
 class Leaderboard(BaseModel):
