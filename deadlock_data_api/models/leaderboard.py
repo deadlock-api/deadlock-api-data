@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 from valveprotos_py.citadel_gcmessages_client_pb2 import CMsgClientToGCGetLeaderboardResponse
 
 
@@ -9,6 +9,16 @@ class LeaderboardEntry(BaseModel):
     rank: int
     badge_level: int
     top_hero_ids: list[int]
+
+    @computed_field
+    @property
+    def ranked_rank(self) -> int | None:
+        return self.badge_level // 10 if self.badge_level is not None else None
+
+    @computed_field
+    @property
+    def ranked_subrank(self) -> int | None:
+        return self.badge_level % 10 if self.badge_level is not None else None
 
     @classmethod
     def from_msg(
