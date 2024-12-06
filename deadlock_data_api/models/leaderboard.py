@@ -7,8 +7,8 @@ class LeaderboardEntry(BaseModel):
 
     account_name: str
     rank: int
+    top_hero_ids: list[int] | None
     badge_level: int
-    top_hero_ids: list[int]
 
     @computed_field
     @property
@@ -28,7 +28,9 @@ class LeaderboardEntry(BaseModel):
             account_name=msg.account_name,
             rank=msg.rank,
             badge_level=msg.badge_level,
-            top_hero_ids=msg.top_hero_ids,
+            top_hero_ids=msg.top_hero_ids
+            if msg.top_hero_ids and len(msg.top_hero_ids) > 0
+            else None,
         )
 
 
