@@ -59,6 +59,30 @@ def get_patch_notes(res: Response):
     return fetch_patch_notes()
 
 
+@router.get(
+    "/big-patch-days",
+    description="""
+            Returns a list of dates where Deadlock's "big" patch days were, usually bi-weekly.
+            The exact date is the time when the announcement forum post was published.
+
+            This list is manually maintained, and so new patch dates may be delayed by a few hours.
+            """,
+    summary="No Rate Limits",
+)
+def get_big_patch_days(res: Response) -> list[datetime]:
+    res.headers["Cache-Control"] = f"public, max-age={30 * 60}"
+    date_string_list = [
+        "2024-12-06T20:05:10Z",
+        "2024-11-21T23:21:49Z",
+        "2024-11-07T21:31:34Z",
+        "2024-10-24T19:39:08Z",
+        "2024-10-10T20:24:45Z",
+        "2024-09-26T21:17:58Z",
+    ]
+
+    return [datetime.fromisoformat(date_string) for date_string in date_string_list]
+
+
 @router.get("/builds", response_model_exclude_none=True, summary="Rate Limit 100req/s")
 def get_builds(
     req: Request,
