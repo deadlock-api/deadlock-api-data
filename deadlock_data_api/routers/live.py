@@ -79,7 +79,7 @@ async def message_stream(match_id: int):
 @router.get("/matches/{match_id}/stream_sse", summary="Stream game events via Server-Sent Events")
 async def stream_sse(req: Request, match_id: int) -> StreamingResponse:
     LOGGER.info(f"Streaming match {match_id} via Server-Sent Events")
-    return StreamingResponse(message_stream(req, match_id), media_type="text/event-stream")
+    return StreamingResponse(message_stream(match_id), media_type="text/event-stream")
 
 
 @router.get(
