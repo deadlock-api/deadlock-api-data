@@ -39,6 +39,16 @@ def start_stream(req: Request, res: Response, match_id: str):
     return {"status": "ok"}
 
 
+def fetch_active_streams() -> list[int]:
+    try:
+        return requests.get(
+            "https://broadcaster.deadlock-api.com/api/matches/active-streams"
+        ).json()
+    except requests.HTTPError as e:
+        LOGGER.error(f"Failed to get active streams: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get active streams")
+
+
 @router.get("/matches/active-streams", summary="Rate Limit 100req/s")
 def get_active_streams(req: Request, res: Response) -> list[int]:
     limiter.apply_limits(
@@ -48,13 +58,7 @@ def get_active_streams(req: Request, res: Response) -> list[int]:
         [RateLimit(limit=100, period=1)],
     )
     LOGGER.info("Getting active streams")
-    try:
-        return requests.get(
-            "https://broadcaster.deadlock-api.com/api/matches/active-streams"
-        ).json()
-    except requests.HTTPError as e:
-        LOGGER.error(f"Failed to get active streams: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get active streams")
+    return fetch_active_streams()
 
 
 async def message_stream(match_id: int):
@@ -77,8 +81,10 @@ async def message_stream(match_id: int):
 
 
 @router.get("/matches/{match_id}/stream_sse", summary="Stream game events via Server-Sent Events")
-async def stream_sse(req: Request, match_id: int) -> StreamingResponse:
+async def stream_sse(match_id: int) -> StreamingResponse:
     LOGGER.info(f"Streaming match {match_id} via Server-Sent Events")
+    if match_id not in fetch_active_streams():
+        raise HTTPException(status_code=404, detail="Match not found")
     return StreamingResponse(message_stream(match_id), media_type="text/event-stream")
 
 
@@ -101,6 +107,9 @@ def stream_websocket_dummy(match_id: str) -> dict[str, str]:
 async def stream_websocket(websocket: WebSocket, match_id: int):
     await websocket.accept()
     LOGGER.info(f"Streaming match {match_id} via WebSocket")
+    if match_id not in fetch_active_streams():
+        await websocket.close()
+        raise HTTPException(status_code=404, detail="Match not found")
 
     consumer = AIOKafkaConsumer(
         f"game-streams-{match_id}",
