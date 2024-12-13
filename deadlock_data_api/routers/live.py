@@ -83,7 +83,7 @@ async def message_stream(match_id: int):
 @router.get("/matches/{match_id}/stream_sse", summary="Stream game events via Server-Sent Events")
 async def stream_sse(match_id: int) -> StreamingResponse:
     LOGGER.info(f"Streaming match {match_id} via Server-Sent Events")
-    if match_id not in fetch_active_streams():
+    if str(match_id) not in fetch_active_streams():
         raise HTTPException(status_code=404, detail="Match not found")
     return StreamingResponse(message_stream(match_id), media_type="text/event-stream")
 
@@ -107,7 +107,7 @@ def stream_websocket_dummy(match_id: str) -> dict[str, str]:
 async def stream_websocket(websocket: WebSocket, match_id: int):
     await websocket.accept()
     LOGGER.info(f"Streaming match {match_id} via WebSocket")
-    if match_id not in fetch_active_streams():
+    if str(match_id) not in fetch_active_streams():
         await websocket.close()
         raise HTTPException(status_code=404, detail="Match not found")
 
