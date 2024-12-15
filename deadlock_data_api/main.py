@@ -12,7 +12,7 @@ from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import postgres_conn
 from deadlock_data_api.routers import base, live, v1, v2
-from deadlock_data_api.utils import send_webhook_event
+from deadlock_data_api.utils import ExcludeRoutesMiddleware, send_webhook_event
 
 # Doesn't use AppConfig because logging is critical
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
@@ -45,7 +45,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
+app.add_middleware(
+    ExcludeRoutesMiddleware,
+    exclude_routes=["/metrics", "/health", "/robots.txt", "/v1/matches/{match_id}/raw-metadata"],
+    proxied_middleware_class=GZipMiddleware,
+    minimum_size=1000,
+    compresslevel=5,
+)
 
 instrumentator = Instrumentator(should_group_status_codes=False).instrument(app)
 

@@ -12,11 +12,13 @@ from fastapi.openapi.models import APIKey, APIKeyIn
 from fastapi.security.api_key import APIKeyBase
 from google.protobuf.message import Message
 from requests import HTTPError
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import postgres_conn, redis_conn, s3_cache_conn
@@ -307,3 +309,25 @@ def send_webhook_event(event_type: str, data: str):
         },
         headers={"Authorization": f"Bearer {CONFIG.hook0.api_key}"},
     ).raise_for_status()
+
+
+class ExcludeRoutesMiddleware(BaseHTTPMiddleware):
+    def __init__(
+        self,
+        app: ASGIApp,
+        exclude_routes: list[str],
+        proxied_middleware_class: type,
+        *proxied_args,
+        **proxied_kwargs,
+    ):
+        super().__init__(app)
+        self.exclude_routes = exclude_routes
+        self.middleware = proxied_middleware_class(app=app, *proxied_args, **proxied_kwargs)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        path = scope["path"]
+        if path in self.exclude_routes:
+            return await self.app(scope, receive, send)
+        return await self.middleware(scope, receive, send)
