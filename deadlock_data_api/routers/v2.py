@@ -16,7 +16,7 @@ router = APIRouter(prefix="/v2", tags=["V2"])
 @router.get(
     "/players/{account_id}/match-history",
     response_model_exclude_none=True,
-    summary="Rate Limit 60req/min, API-Key RateLimit: 20req/s",
+    summary="Rate Limit 60req/min, API-Key RateLimit: 100req/s, Shared Rate Limit with /v1/players/{account_id}/match-history",
 )
 def player_match_history(
     req: Request,
@@ -28,9 +28,10 @@ def player_match_history(
     limiter.apply_limits(
         req,
         res,
-        "/v2/players/{account_id}/match-history",
+        "/players/{account_id}/match-history",
         [RateLimit(limit=60, period=60)],
-        [RateLimit(limit=20, period=1)],
+        [RateLimit(limit=100, period=1)],
+        [RateLimit(limit=1000, period=1)],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     account_id = utils.validate_steam_id(account_id)
