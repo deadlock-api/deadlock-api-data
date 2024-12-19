@@ -25,6 +25,7 @@ from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
     PlayerMatchHistoryEntry,
 )
+from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
@@ -43,7 +44,7 @@ from deadlock_data_api.routers.v1_utils import (
     load_builds_by_author,
     load_builds_by_hero,
 )
-from deadlock_data_api.utils import cache_file, get_cached_file
+from deadlock_data_api.utils import cache_file, get_cached_file, send_webhook_event
 
 CACHE_AGE_ACTIVE_MATCHES = 20
 CACHE_AGE_BUILDS = 5 * 60
@@ -501,3 +502,14 @@ def get_demo_url(
         f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
     )
     return {"demo_url": demo_url}
+
+
+@router.post("/matches/{match_id}/ingest", tags=["Webhooks"], include_in_schema=False)
+def match_created_event(match_id: int):
+    payload = MatchCreatedWebhookPayload(
+        match_id=match_id,
+        metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/metadata",
+        raw_metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/raw-metadata",
+    )
+    send_webhook_event("match.metadata.created", payload.model_dump_json())
+    return {"status": "success"}

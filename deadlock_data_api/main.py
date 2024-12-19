@@ -4,15 +4,15 @@ import os
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
-from pydantic import BaseModel, Field
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import PlainTextResponse, RedirectResponse
 
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import postgres_conn
+from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload, WebhookSubscribeRequest
 from deadlock_data_api.routers import base, live, v1, v2
-from deadlock_data_api.utils import ExcludeRoutesMiddleware, send_webhook_event
+from deadlock_data_api.utils import ExcludeRoutesMiddleware
 
 # Doesn't use AppConfig because logging is critical
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
@@ -85,32 +85,6 @@ def head_health():
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
 def get_robots() -> str:
     return "User-Agent: *\nDisallow: /\nAllow: /docs\nAllow: /\n"
-
-
-class ObjectUploadedEvent(BaseModel):
-    key: str = Field(..., validation_alias="Key")
-
-
-class MatchCreatedWebhookPayload(BaseModel):
-    match_id: int
-    metadata_url: str
-    raw_metadata_url: str
-
-
-@app.post("/matches/created", tags=["Webhooks"], include_in_schema=False)
-def match_created_event(object_uploaded_event: ObjectUploadedEvent):
-    match_id = int(object_uploaded_event.key.split("/")[-1].split(".")[0])
-    payload = MatchCreatedWebhookPayload(
-        match_id=match_id,
-        metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/metadata",
-        raw_metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/raw-metadata",
-    )
-    send_webhook_event("match.metadata.created", payload.model_dump_json())
-    return {"status": "success"}
-
-
-class WebhookSubscribeRequest(BaseModel):
-    webhook_url: str
 
 
 @app.post("/matches/webhook/subscribe", summary="1 Webhook per API-Key", tags=["Webhooks"])
