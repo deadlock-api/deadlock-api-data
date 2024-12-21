@@ -160,6 +160,18 @@ def is_valid_api_key(api_key: str, data_access: bool = False) -> bool:
         return cursor.fetchone() is not None
 
 
+async def get_internal_api_key(api_key: str = Security(api_key_param)):
+    if not is_internal_api_key(api_key):
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+
+
+def is_internal_api_key(api_key: str) -> bool:
+    with open("internal_api_keys.txt") as f:
+        available_api_keys = f.read().splitlines()
+        available_api_keys = [a.split("#")[0].strip() for a in available_api_keys]
+    return api_key in available_api_keys
+
+
 def validate_account_groups(account_groups: str, api_key: str | None) -> str | None:
     if not account_groups:
         return None

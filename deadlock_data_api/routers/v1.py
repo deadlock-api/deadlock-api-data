@@ -3,7 +3,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.openapi.models import APIKey
 from google.protobuf.json_format import MessageToDict
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -505,7 +506,11 @@ def get_demo_url(
 
 
 @router.post("/matches/{match_id}/ingest", tags=["Webhooks"], include_in_schema=False)
-def match_created_event(match_id: int):
+def match_created_event(
+    match_id: int,
+    api_key: APIKey = Depends(utils.get_internal_api_key),
+):
+    print(f"Authenticated with API-Key: {api_key}")
     payload = MatchCreatedWebhookPayload(
         match_id=match_id,
         metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/metadata",
