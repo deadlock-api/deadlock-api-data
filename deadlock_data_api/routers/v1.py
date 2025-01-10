@@ -6,6 +6,7 @@ from typing import Literal
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.openapi.models import APIKey
 from google.protobuf.json_format import MessageToDict
+from pydantic import BaseModel
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
@@ -428,7 +429,7 @@ def get_raw_metadata_file(
         limiter.apply_limits(
             req,
             res,
-            "/v1/matches/{match_id}/metadata#steam",
+            "/v1/matches/{match_id}/#steam",
             [RateLimit(limit=30, period=3600)],
             [RateLimit(limit=30, period=3600)],
             [RateLimit(limit=30, period=3600)],
@@ -470,14 +471,32 @@ async def get_metadata(
 @router.get(
     "/matches/{match_id}/demo-url",
     summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 30req/h",
+    deprecated=True,
 )
-def get_demo_url(
+def get_demo_url(match_id: int) -> RedirectResponse:
+    return RedirectResponse(url=f"/v1/matches/{match_id}/salts", status_code=308)
+
+
+class DataUrlsResponse(BaseModel):
+    match_id: int
+    cluster_id: int
+    metadata_salt: int
+    replay_salt: int
+    metadata_url: str
+    demo_url: str
+
+
+@router.get(
+    "/matches/{match_id}/salts",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s",
+)
+def get_match_salts(
     req: Request, res: Response, match_id: int, account_groups: str | None = None
 ) -> dict[str, str]:
     limiter.apply_limits(
         req,
         res,
-        "/v1/matches/{match_id}/demo-url",
+        "/v1/matches/{match_id}/salts",
         [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
         [RateLimit(limit=100, period=1)],
     )
@@ -493,16 +512,24 @@ def get_demo_url(
         limiter.apply_limits(
             req,
             res,
-            "/v1/matches/{match_id}/metadata#steam",  # Sync with /metadata#steam rate limits
+            "/v1/matches/{match_id}/#steam",
             [RateLimit(limit=30, period=3600)],
             [RateLimit(limit=30, period=3600)],
             [RateLimit(limit=30, period=3600)],
         )
         salts = get_match_salts_from_steam(match_id, True, account_groups)
+    metadata_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
     demo_url = (
         f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
     )
-    return {"demo_url": demo_url}
+    return {
+        "match_id": match_id,
+        "cluster_id": salts.cluster_id,
+        "metadata_salt": salts.metadata_salt,
+        "replay_salt": salts.replay_salt,
+        "metadata_url": metadata_url,
+        "demo_url": demo_url,
+    }
 
 
 @router.post("/matches/{match_id}/ingest", tags=["Webhooks"], include_in_schema=False)
