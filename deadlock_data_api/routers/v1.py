@@ -478,10 +478,10 @@ def get_demo_url(match_id: int) -> RedirectResponse:
 
 
 class DataUrlsResponse(BaseModel):
-    match_id: int
-    cluster_id: int
-    metadata_salt: int
-    replay_salt: int
+    match_id: str
+    cluster_id: str
+    metadata_salt: str
+    replay_salt: str
     metadata_url: str
     demo_url: str
 
