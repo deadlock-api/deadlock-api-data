@@ -492,7 +492,7 @@ class DataUrlsResponse(BaseModel):
 )
 def get_match_salts(
     req: Request, res: Response, match_id: int, account_groups: str | None = None
-) -> dict[str, str]:
+) -> DataUrlsResponse:
     limiter.apply_limits(
         req,
         res,
