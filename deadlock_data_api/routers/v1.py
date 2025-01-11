@@ -559,7 +559,7 @@ def get_leaderboard_rank(
     region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
     account_name: str,
 ):
-    res["Cache-Control"] = "public, max-age=60"
+    res.headers["Cache-Control"] = "public, max-age=60"
     for retry in range(3):
         try:
             ranks = requests.get("https://assets.deadlock-api.com/v2/ranks").json()
