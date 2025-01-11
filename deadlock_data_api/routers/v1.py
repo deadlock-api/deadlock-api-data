@@ -1,14 +1,16 @@
 import bz2
 import logging
 from datetime import datetime, timedelta
+from time import sleep
 from typing import Literal
 
+import requests
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.openapi.models import APIKey
 from google.protobuf.json_format import MessageToDict
 from pydantic import BaseModel
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgClientToGCGetActiveMatchesResponse,
 )
@@ -545,3 +547,33 @@ def match_created_event(
     )
     send_webhook_event("match.metadata.created", payload.model_dump_json())
     return {"status": "success"}
+
+
+@router.get(
+    "/commands/leaderboard-rank/{region}/{account_name}",
+    summary="Rate Limit 100req/s | Sync with /v1/leaderboard/{region}",
+    response_class=PlainTextResponse,
+)
+def get_leaderboard_rank(
+    res: Response,
+    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+    account_name: str,
+):
+    res["Cache-Control"] = "public, max-age=60"
+    for retry in range(3):
+        try:
+            ranks = requests.get("https://assets.deadlock-api.com/v2/ranks").json()
+            leaderboard = get_leaderboard(region, None, None)
+        except Exception as e:
+            LOGGER.error(f"Failed to get leaderboard: {e}")
+            sleep(0.1)
+            if retry == 2:
+                return "Failed to get leaderboard"
+    for entry in leaderboard.entries:
+        if entry.account_name == account_name:
+            rank = entry.ranked_rank
+            rank_name = next((r["name"] for r in ranks if r["tier"] == rank), None)
+            if rank_name is None:
+                return f"Failed to get rank name for {rank}"
+            return f"{entry.account_name} is {rank_name} {entry.ranked_subrank} | #{entry.rank}"
+    return "Player not found in leaderboard"
