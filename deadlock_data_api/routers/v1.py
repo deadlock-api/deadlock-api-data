@@ -593,18 +593,28 @@ def get_record_command(
 ):
     res.headers["Cache-Control"] = "public, max-age=60"
     account_id = utils.validate_steam_id(account_id)
+    match_history = None
     for retry in range(3):
         try:
-            match_history = v2.get_player_match_history(account_id)
+            match_history = v2.get_player_match_history(account_id).matches
         except Exception as e:
             LOGGER.error(f"Failed to get match history: {e}")
             sleep(0.1)
-            if retry == 2:
-                return "Failed to get match history"
-    if match_history is None or not match_history.matches:
+    if not match_history:
+        for retry in range(3):
+            try:
+                match_history = requests.get(
+                    f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+                ).json()
+            except Exception as e:
+                LOGGER.error(f"Failed to get match history: {e}")
+                sleep(0.1)
+                if retry == 2:
+                    return "Failed to get match history"
+    if not match_history:
         return "No match history found"
     min_unix_time = int((datetime.now() - timedelta(hours=last_n_hours)).timestamp())
-    matches = [m for m in match_history.matches if m.start_time > min_unix_time]
+    matches = [m for m in match_history if m.start_time > min_unix_time]
     wins = sum(m.match_result for m in matches)
     losses = len(matches) - wins
     return f"{wins}W - {losses}L"
