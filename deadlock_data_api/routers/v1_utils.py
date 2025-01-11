@@ -73,7 +73,7 @@ def get_player_match_history(
         CMsgClientToGCGetMatchHistoryResponse,
         15_000,  # 4 per minute
         account_groups.split(",") if account_groups else ["GetMatchHistory"],
-        900,
+        60,
     )
     match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
     match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)

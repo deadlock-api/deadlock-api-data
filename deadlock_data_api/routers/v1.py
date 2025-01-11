@@ -2,11 +2,12 @@ import bz2
 import logging
 from datetime import datetime, timedelta
 from time import sleep
-from typing import Literal
+from typing import Annotated, Literal
 
 import requests
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.openapi.models import APIKey
+from fastapi.params import Query
 from google.protobuf.json_format import MessageToDict
 from pydantic import BaseModel
 from starlette.requests import Request
@@ -32,6 +33,7 @@ from deadlock_data_api.models.player_match_history import (
 from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
+from deadlock_data_api.routers import v2
 from deadlock_data_api.routers.v1_utils import (
     fetch_active_matches_raw,
     fetch_metadata,
@@ -554,7 +556,7 @@ def match_created_event(
     summary="Rate Limit 100req/s | Sync with /v1/leaderboard/{region}",
     response_class=PlainTextResponse,
 )
-def get_leaderboard_rank(
+def get_leaderboard_rank_command(
     res: Response,
     region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
     account_name: str,
@@ -577,3 +579,32 @@ def get_leaderboard_rank(
                 return f"Failed to get rank name for {rank}"
             return f"{entry.account_name} is {rank_name} {entry.ranked_subrank} | #{entry.rank}"
     return "Player not found in leaderboard"
+
+
+@router.get(
+    "/commands/record/{account_id}",
+    summary="Rate Limit 100req/s | Sync with /v2/players/{account_id}/match-history",
+    response_class=PlainTextResponse,
+)
+def get_record_command(
+    res: Response,
+    account_id: int,
+    last_n_hours: Annotated[int, Query(..., description="Last N hours to check", gt=0, le=24)] = 12,
+):
+    res.headers["Cache-Control"] = "public, max-age=60"
+    account_id = utils.validate_steam_id(account_id)
+    for retry in range(3):
+        try:
+            match_history = v2.get_player_match_history(account_id)
+        except Exception as e:
+            LOGGER.error(f"Failed to get match history: {e}")
+            sleep(0.1)
+            if retry == 2:
+                return "Failed to get match history"
+    if match_history is None or not match_history.matches:
+        return "No match history found"
+    min_unix_time = int((datetime.now() - timedelta(hours=last_n_hours)).timestamp())
+    matches = [m for m in match_history.matches if m.start_time > min_unix_time]
+    wins = sum(m.match_result for m in matches)
+    losses = len(matches) - wins
+    return f"{wins}W - {losses}L"
