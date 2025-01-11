@@ -415,6 +415,6 @@ def get_leaderboard(
         CMsgClientToGCGetLeaderboardResponse,
         60 * 1000,
         account_groups.split(",") if account_groups else ["LowRateLimitApis"],
-        900,
+        60,
     )
     return Leaderboard.from_msg(msg)
