@@ -121,17 +121,6 @@ class HOOK0Config:
 
 
 @dataclass
-class CommandsConfig:
-    daily_stats_hours: int
-
-    @classmethod
-    def from_env(cls) -> "CommandsConfig":
-        return cls(
-            daily_stats_hours=int(os.environ.get("DAILY_STATS_HOURS", 8)),
-        )
-
-
-@dataclass
 class AppConfig:
     clickhouse: ClickhouseConfig
     redis: RedisConfig
@@ -141,7 +130,6 @@ class AppConfig:
     kafka: KafkaConfig
     hook0: HOOK0Config
     steam_proxy: SteamProxyConfig | None
-    commands: CommandsConfig
     steam_api_key: str
     discord_webhook_url: str | None
     emergency_mode: bool
@@ -162,7 +150,6 @@ class AppConfig:
             kafka=KafkaConfig.from_env(),
             hook0=HOOK0Config.from_env(),
             steam_proxy=SteamProxyConfig.from_env(),
-            commands=CommandsConfig.from_env(),
             steam_api_key=os.environ.get("STEAM_API_KEY"),
             discord_webhook_url=os.environ.get("DISCORD_WEBHOOK_URL"),
             emergency_mode=os.environ.get("EMERGENCY_MODE") == "true",

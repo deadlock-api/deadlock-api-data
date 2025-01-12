@@ -1,5 +1,6 @@
 import base64
 import inspect
+import itertools
 import logging
 from datetime import datetime, timedelta
 from typing import Annotated, Literal
@@ -14,6 +15,7 @@ from starlette.responses import PlainTextResponse, Response
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.models.leaderboard import Leaderboard, LeaderboardEntry
+from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
 from deadlock_data_api.routers import v2
 from deadlock_data_api.routers.v1_utils import fetch_patch_notes, get_leaderboard
 
@@ -183,6 +185,28 @@ def get_leaderboard_entry(
     raise CommandResolveError("Player not found in leaderboard")
 
 
+def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
+    match_history = v2.get_player_match_history(account_id).matches
+    match_history.sort(key=lambda x: x.start_time, reverse=True)
+
+    if not match_history:
+        return []
+
+    # If the first match is older than 8 hours ago, we can assume that the player has no matches today
+    if match_history[0].start_time < int((datetime.now() - timedelta(hours=8)).timestamp()):
+        return []
+
+    # Now we can iterate over the match history
+    # All matches that are less than 6 hours apart are considered to be from the same day
+    daily_matches = []
+    for last_match, match in itertools.pairwise(match_history):
+        break_time = match.start_time - last_match.start_time
+        if break_time > timedelta(hours=6).total_seconds():
+            break
+        daily_matches.append(match)
+    return daily_matches
+
+
 class CommandVariable:
     def steam_account_name(self, account_id: int, *args, **kwargs) -> str:
         return get_account_name_with_retry_cached(account_id)
@@ -211,28 +235,22 @@ class CommandVariable:
     def dl_wins_today(
         self,
         account_id: int,
-        today_last_n_hours: int = CONFIG.commands.daily_stats_hours,
         *args,
         **kwargs,
     ) -> str:
         account_id = utils.validate_steam_id(account_id)
-        match_history = v2.get_player_match_history(account_id).matches
-        min_unix_time = int((datetime.now() - timedelta(hours=today_last_n_hours)).timestamp())
-        matches = [m for m in match_history if m.start_time > min_unix_time]
+        matches = get_daily_matches(account_id)
         wins = sum(m.match_result for m in matches)
         return str(wins)
 
     def dl_losses_today(
         self,
         account_id: int,
-        today_last_n_hours: int = CONFIG.commands.daily_stats_hours,
         *args,
         **kwargs,
     ) -> str:
         account_id = utils.validate_steam_id(account_id)
-        match_history = v2.get_player_match_history(account_id).matches
-        min_unix_time = int((datetime.now() - timedelta(hours=today_last_n_hours)).timestamp())
-        matches = [m for m in match_history if m.start_time > min_unix_time]
+        matches = get_daily_matches(account_id)
         losses = len(matches) - sum(m.match_result for m in matches)
         return str(losses)
 
@@ -274,9 +292,6 @@ def get_command_resolve(
     template_base64: Annotated[
         str | None, Query(..., description="Command template base64 encoded")
     ] = None,
-    today_last_n_hours: Annotated[
-        int | None, Query(..., description="Last N hours to check for daily stats", gt=0)
-    ] = None,
     hero_name: Annotated[
         str | None, Query(..., description="Hero name to check for hero specific stats")
     ] = None,
@@ -291,7 +306,6 @@ def get_command_resolve(
         "region": region,
         "account_id": account_id,
         "template": template,
-        "today_last_n_hours": today_last_n_hours or CONFIG.commands.daily_stats_hours,
         "hero_name": hero_name,
     }
     LOGGER.info(f"Resolving command: {kwargs['template']}")
