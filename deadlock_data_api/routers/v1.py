@@ -613,6 +613,26 @@ def get_hero_leaderboard_rank_command(
 
 
 @router.get(
+    "/commands/leaderboard-rank/{region}/{account_name}/by-hero-name/{hero_name}",
+    summary="Rate Limit 100req/s | Sync with /v1/leaderboard/{region}/{hero_id}",
+    response_class=PlainTextResponse,
+)
+def get_hero_leaderboard_rank_command_by_name(
+    res: Response,
+    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+    account_name: str,
+    hero_name: str,
+):
+    hero_data = requests.get(
+        f"https://assets.deadlock-api.com/v2/heroes/by-name/{hero_name.strip()}"
+    ).json()
+    hero_id = hero_data.get("id")
+    if hero_id is None:
+        return "Hero not found"
+    return get_hero_leaderboard_rank_command(res, region, account_name, hero_id)
+
+
+@router.get(
     "/commands/record/{account_id}",
     summary="Rate Limit 100req/s | Sync with /v2/players/{account_id}/match-history",
     response_class=PlainTextResponse,
