@@ -255,6 +255,13 @@ class CommandVariable:
         return latest.link
 
 
+@router.get("/commands/available-variables")
+def get_command_variables(res: Response) -> list[str]:
+    res.headers["Cache-Control"] = "public, max-age=60"
+    variable_resolvers = inspect.getmembers(CommandVariable(), inspect.ismethod)
+    return [name for name, _ in variable_resolvers]
+
+
 @router.get(
     "/commands/{region}/{account_id}/resolve",
     response_class=PlainTextResponse,
