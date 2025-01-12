@@ -540,6 +540,7 @@ def match_created_event(
     print(f"Authenticated with API-Key: {api_key}")
     payload = MatchCreatedWebhookPayload(
         match_id=match_id,
+        salts_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/salts",
         metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/metadata",
         raw_metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/raw-metadata",
     )
