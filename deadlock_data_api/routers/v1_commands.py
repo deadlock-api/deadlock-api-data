@@ -1,86 +1,87 @@
+import base64
+import inspect
+import logging
 from datetime import datetime, timedelta
-from time import sleep
 from typing import Annotated, Literal
 
 import requests
+from cachetools.func import ttl_cache
+from fastapi import APIRouter
 from fastapi.params import Query
+from retry import retry
 from starlette.responses import PlainTextResponse, Response
 
 from deadlock_data_api import utils
+from deadlock_data_api.conf import CONFIG
+from deadlock_data_api.models.leaderboard import Leaderboard, LeaderboardEntry
 from deadlock_data_api.routers import v2
-from deadlock_data_api.routers.v1 import LOGGER, router
 from deadlock_data_api.routers.v1_utils import get_leaderboard
+
+LOGGER = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/v1", tags=["V1"])
+
+RegionType = Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"]
 
 
 @router.get(
     "/commands/leaderboard-rank/{region}/{account_name}",
     summary="Rate Limit 100req/s | Sync with /v1/leaderboard/{region}",
+    deprecated=True,
+    include_in_schema=False,
     response_class=PlainTextResponse,
 )
 def get_leaderboard_rank_command(
     res: Response,
-    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+    region: RegionType,
     account_name: str,
 ):
     res.headers["Cache-Control"] = "public, max-age=60"
-    for retry in range(3):
-        try:
-            ranks = requests.get("https://assets.deadlock-api.com/v2/ranks").json()
-            leaderboard = get_leaderboard(region, None, None)
-        except Exception as e:
-            LOGGER.error(f"Failed to get leaderboard: {e}")
-            sleep(0.1)
-            if retry == 2:
-                return "Failed to get leaderboard"
-    for entry in leaderboard.entries:
-        if entry.account_name == account_name:
-            rank = entry.ranked_rank
-            rank_name = next((r["name"] for r in ranks if r["tier"] == rank), None)
-            if rank_name is None:
-                return f"Failed to get rank name for {rank}"
-            return f"{entry.account_name} is {rank_name} {entry.ranked_subrank} | #{entry.rank}"
-    return "Player not found in leaderboard"
+    try:
+        leaderboard_entry = get_leaderboard_entry(region, account_name)
+        rank_name = get_rank_name(leaderboard_entry.badge_level)
+        return f"{leaderboard_entry.account_name} is {rank_name} | #{leaderboard_entry.rank}"
+    except CommandResolveError as e:
+        return str(e)
+    except Exception:
+        return "Failed to get fetch leaderboard"
 
 
 @router.get(
     "/commands/leaderboard-rank/{region}/{account_name}/{hero_id}",
     summary="Rate Limit 100req/s | Sync with /v1/leaderboard/{region}/{hero_id}",
+    deprecated=True,
+    include_in_schema=False,
     response_class=PlainTextResponse,
 )
 def get_hero_leaderboard_rank_command(
     res: Response,
-    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+    region: RegionType,
     account_name: str,
     hero_id: int,
 ):
     res.headers["Cache-Control"] = "public, max-age=60"
-    for retry in range(3):
-        try:
-            hero_name = (
-                requests.get(f"https://assets.deadlock-api.com/v2/heroes/{hero_id}")
-                .json()
-                .get("name")
-            )
-            leaderboard = get_leaderboard(region, hero_id, None)
-        except Exception as e:
-            LOGGER.error(f"Failed to get leaderboard: {e}")
-            sleep(0.1)
-            if retry == 2:
-                return "Failed to get leaderboard"
-    for entry in leaderboard.entries:
-        if entry.account_name == account_name:
-            return f"#{entry.rank} with {hero_name}"
-    return "Player not found in leaderboard"
+    try:
+        response = requests.get(f"https://assets.deadlock-api.com/v2/heroes/{hero_id}").json()
+        hero_name = response.get("name")
+        leaderboard_entry = get_leaderboard_entry(region, account_name, hero_id)
+        return f"#{leaderboard_entry.rank} with {hero_name}"
+    except CommandResolveError as e:
+        return str(e)
+    except Exception:
+        return "Failed to get fetch leaderboard"
 
 
 @router.get(
     "/commands/leaderboard-rank/{region}/{account_name}/by-hero-name/{hero_name}",
     summary="Rate Limit 100req/s | Sync with /v1/leaderboard/{region}/{hero_id}",
+    deprecated=True,
+    include_in_schema=False,
     response_class=PlainTextResponse,
 )
 def get_hero_leaderboard_rank_command_by_name(
     res: Response,
-    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+    region: RegionType,
     account_name: str,
     hero_name: str,
 ):
@@ -96,37 +97,190 @@ def get_hero_leaderboard_rank_command_by_name(
 @router.get(
     "/commands/record/{account_id}",
     summary="Rate Limit 100req/s | Sync with /v2/players/{account_id}/match-history",
+    include_in_schema=False,
     response_class=PlainTextResponse,
 )
 def get_record_command(
     res: Response,
     account_id: int,
-    last_n_hours: Annotated[int, Query(..., description="Last N hours to check", gt=0, le=24)] = 8,
+    last_n_hours: Annotated[int, Query(..., description="Last N hours to check", gt=0)] = 8,
 ):
     res.headers["Cache-Control"] = "public, max-age=60"
     account_id = utils.validate_steam_id(account_id)
-    match_history = None
-    for retry in range(3):
+    return resolve_command(
+        "{dl_wins_today}W - {dl_losses_today}L", account_id=account_id, last_n_hours=last_n_hours
+    )
+
+
+class CommandResolveError(Exception):
+    message: str
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(message)
+
+    def __str__(self) -> str:
+        return f"Failed to resolve command: {self.message}"
+
+
+@ttl_cache(ttl=60)
+@retry(tries=3)
+def get_leaderboard_with_retry_cached(
+    region: RegionType, hero_id: int | None = None
+) -> Leaderboard:
+    return get_leaderboard(region, hero_id)
+
+
+@ttl_cache(ttl=60)
+@retry(tries=3)
+def get_ranks_with_retry_cached() -> dict:
+    return requests.get("https://assets.deadlock-api.com/v2/ranks").json()
+
+
+@ttl_cache(ttl=60)
+@retry(tries=3)
+def get_account_name_with_retry_cached(account_id: int) -> str:
+    account_id = utils.steamid3_to_steamid64(account_id)
+    response = requests.get(
+        f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?steamids={account_id}",
+        headers={"x-webapi-key": CONFIG.steam_api_key},
+    ).json()
+    response = response.get("response", {})
+    account = next(iter(response.get("players", [])), None)
+    if account is None:
+        raise CommandResolveError(f"Failed to get account name for {account_id}")
+    return account["personaname"]
+
+
+@ttl_cache(ttl=60)
+@retry(tries=3)
+def get_hero_id_with_retry_cached(hero_name: str) -> int:
+    hero_data = requests.get(
+        f"https://assets.deadlock-api.com/v2/heroes/by-name/{hero_name.strip()}"
+    ).json()
+    hero_id = hero_data.get("id")
+    if hero_id is None:
+        raise CommandResolveError(f"Failed to get hero id for {hero_name}")
+    return hero_id
+
+
+def get_rank_name(rank: int) -> str:
+    rank, subrank = divmod(rank, 10)
+    ranks = get_ranks_with_retry_cached()
+    rank_name = next((r["name"] for r in ranks if r["tier"] == rank), None)
+    if rank_name is None:
+        raise CommandResolveError(f"Failed to get rank name for {rank}")
+    return f"{rank_name} {subrank}"
+
+
+def get_leaderboard_entry(
+    region: RegionType, account_name: str, hero_id: int | None = None
+) -> LeaderboardEntry:
+    leaderboard = get_leaderboard_with_retry_cached(region, hero_id)
+    for entry in leaderboard.entries:
+        if entry.account_name == account_name:
+            return entry
+    raise CommandResolveError("Player not found in leaderboard")
+
+
+class CommandVariable:
+    def steam_account_name(self, account_id: int, *args, **kwargs) -> str:
+        return get_account_name_with_retry_cached(account_id)
+
+    def dl_leaderboard_rank(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
+        account_name = get_account_name_with_retry_cached(account_id)
+        leaderboard_entry = get_leaderboard_entry(region, account_name)
+        return get_rank_name(leaderboard_entry.badge_level)
+
+    def dl_leaderboard_place(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
+        account_name = get_account_name_with_retry_cached(account_id)
+        leaderboard_entry = get_leaderboard_entry(region, account_name)
+        return str(leaderboard_entry.rank)
+
+    def dl_hero_leaderboard_place(
+        self, region: RegionType, account_id: int, hero_name: str, *args, **kwargs
+    ) -> str:
         try:
-            match_history = v2.get_player_match_history(account_id).matches
-        except Exception as e:
-            LOGGER.error(f"Failed to get match history: {e}")
-            sleep(0.1)
-    if not match_history:
-        for retry in range(3):
-            try:
-                match_history = requests.get(
-                    f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
-                ).json()
-            except Exception as e:
-                LOGGER.error(f"Failed to get match history: {e}")
-                sleep(0.1)
-                if retry == 2:
-                    return "Failed to get match history"
-    if not match_history:
-        return "No match history found"
-    min_unix_time = int((datetime.now() - timedelta(hours=last_n_hours)).timestamp())
-    matches = [m for m in match_history if m.start_time > min_unix_time]
-    wins = sum(m.match_result for m in matches)
-    losses = len(matches) - wins
-    return f"{wins}W - {losses}L"
+            hero_id = get_hero_id_with_retry_cached(hero_name)
+        except CommandResolveError:
+            hero_id = None
+        account_name = get_account_name_with_retry_cached(account_id)
+        leaderboard_entry = get_leaderboard_entry(region, account_name, hero_id)
+        return str(leaderboard_entry.rank)
+
+    def dl_wins_today(
+        self,
+        account_id: int,
+        today_last_n_hours: int = CONFIG.commands.daily_stats_hours,
+        *args,
+        **kwargs,
+    ) -> str:
+        account_id = utils.validate_steam_id(account_id)
+        match_history = v2.get_player_match_history(account_id).matches
+        min_unix_time = int((datetime.now() - timedelta(hours=today_last_n_hours)).timestamp())
+        matches = [m for m in match_history if m.start_time > min_unix_time]
+        wins = sum(m.match_result for m in matches)
+        return str(wins)
+
+    def dl_losses_today(
+        self,
+        account_id: int,
+        today_last_n_hours: int = CONFIG.commands.daily_stats_hours,
+        *args,
+        **kwargs,
+    ) -> str:
+        account_id = utils.validate_steam_id(account_id)
+        match_history = v2.get_player_match_history(account_id).matches
+        min_unix_time = int((datetime.now() - timedelta(hours=today_last_n_hours)).timestamp())
+        matches = [m for m in match_history if m.start_time > min_unix_time]
+        losses = len(matches) - sum(m.match_result for m in matches)
+        return str(losses)
+
+
+@router.get(
+    "/commands/{region}/{account_id}/resolve",
+    response_class=PlainTextResponse,
+)
+def get_command_resolve(
+    res: Response,
+    region: RegionType,
+    account_id: int,
+    template: Annotated[str | None, Query(..., description="Command template")] = None,
+    template_base64: Annotated[
+        str | None, Query(..., description="Command template base64 encoded")
+    ] = None,
+    today_last_n_hours: Annotated[
+        int | None, Query(..., description="Last N hours to check for daily stats", gt=0)
+    ] = None,
+    hero_name: Annotated[
+        str | None, Query(..., description="Hero name to check for hero specific stats")
+    ] = None,
+):
+    res.headers["Cache-Control"] = "public, max-age=60"
+    account_id = utils.validate_steam_id(account_id)
+    if template is None and template_base64 is None:
+        return "Missing template"
+    if template is None and template_base64 is not None:
+        template = base64.b64decode(template_base64).decode("utf-8")
+    kwargs = {
+        "region": region,
+        "account_id": account_id,
+        "template": template,
+        "today_last_n_hours": today_last_n_hours or CONFIG.commands.daily_stats_hours,
+        "hero_name": hero_name,
+    }
+    LOGGER.info(f"Resolving command: {kwargs['template']}")
+    command = resolve_command(**kwargs)
+    LOGGER.info(f"Resolved command: {command}")
+    return command
+
+
+def resolve_command(template: str, **kwargs) -> str:
+    variable_resolvers = inspect.getmembers(CommandVariable(), inspect.ismethod)
+    for name, resolver in variable_resolvers:
+        template_str = f"{{{name}}}"
+        if template_str in template:
+            value_str = resolver(**kwargs)
+            template = template.replace(template_str, value_str)
+            LOGGER.debug(f"Resolved {template_str} to {value_str}")
+    return template

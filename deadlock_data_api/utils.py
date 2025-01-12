@@ -235,6 +235,10 @@ def validate_steam_id(steam_id: int | str) -> int:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+def steamid3_to_steamid64(steamid3: int) -> int:
+    return steamid3 + STEAM_ID_64_IDENT
+
+
 def cache_file(key: str, data: bytes):
     s3 = s3_cache_conn()
     s3.put_object(Bucket=CONFIG.s3_cache.meta_file_bucket_name, Key=key, Body=data)
