@@ -15,7 +15,7 @@ from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.models.leaderboard import Leaderboard, LeaderboardEntry
 from deadlock_data_api.routers import v2
-from deadlock_data_api.routers.v1_utils import get_leaderboard
+from deadlock_data_api.routers.v1_utils import fetch_patch_notes, get_leaderboard
 
 LOGGER = logging.getLogger(__name__)
 
@@ -235,6 +235,24 @@ class CommandVariable:
         matches = [m for m in match_history if m.start_time > min_unix_time]
         losses = len(matches) - sum(m.match_result for m in matches)
         return str(losses)
+
+    def dl_latest_patchnotes_title(
+        self,
+        *args,
+        **kwargs,
+    ) -> str:
+        patch_notes = fetch_patch_notes()
+        latest = sorted(patch_notes, key=lambda x: x.pub_date, reverse=True)[0]
+        return latest.title
+
+    def dl_latest_patchnotes_link(
+        self,
+        *args,
+        **kwargs,
+    ) -> str:
+        patch_notes = fetch_patch_notes()
+        latest = sorted(patch_notes, key=lambda x: x.pub_date, reverse=True)[0]
+        return latest.link
 
 
 @router.get(
