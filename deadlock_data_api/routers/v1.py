@@ -526,14 +526,14 @@ def get_match_salts(
     demo_url = (
         f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
     )
-    return {
-        "match_id": match_id,
-        "cluster_id": salts.cluster_id,
-        "metadata_salt": salts.metadata_salt,
-        "replay_salt": salts.replay_salt,
-        "metadata_url": metadata_url,
-        "demo_url": demo_url,
-    }
+    return DataUrlsResponse(
+        match_id=match_id,
+        cluster_id=salts.cluster_id,
+        metadata_salt=salts.metadata_salt,
+        replay_salt=salts.replay_salt,
+        metadata_url=metadata_url,
+        demo_url=demo_url,
+    )
 
 
 @router.post("/matches/{match_id}/ingest", tags=["Webhooks"], include_in_schema=False)
