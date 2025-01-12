@@ -200,7 +200,7 @@ def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
     # All matches that are less than 6 hours apart are considered to be from the same day
     daily_matches = []
     for last_match, match in itertools.pairwise(match_history):
-        break_time = match.start_time - last_match.start_time
+        break_time = abs(last_match.start_time - match.start_time)
         if break_time > timedelta(hours=6).total_seconds():
             break
         daily_matches.append(match)
