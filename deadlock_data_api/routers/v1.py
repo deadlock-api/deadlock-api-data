@@ -582,6 +582,37 @@ def get_leaderboard_rank_command(
 
 
 @router.get(
+    "/commands/leaderboard-rank/{region}/{account_name}/{hero_id}",
+    summary="Rate Limit 100req/s | Sync with /v1/leaderboard/{region}/{hero_id}",
+    response_class=PlainTextResponse,
+)
+def get_hero_leaderboard_rank_command(
+    res: Response,
+    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+    account_name: str,
+    hero_id: int,
+):
+    res.headers["Cache-Control"] = "public, max-age=60"
+    for retry in range(3):
+        try:
+            hero_name = (
+                requests.get(f"https://assets.deadlock-api.com/v2/heroes/{hero_id}")
+                .json()
+                .get("name")
+            )
+            leaderboard = get_leaderboard(region, hero_id, None)
+        except Exception as e:
+            LOGGER.error(f"Failed to get leaderboard: {e}")
+            sleep(0.1)
+            if retry == 2:
+                return "Failed to get leaderboard"
+    for entry in leaderboard.entries:
+        if entry.account_name == account_name:
+            return f"#{entry.rank} with {hero_name}"
+    return "Player not found in leaderboard"
+
+
+@router.get(
     "/commands/record/{account_id}",
     summary="Rate Limit 100req/s | Sync with /v2/players/{account_id}/match-history",
     response_class=PlainTextResponse,
