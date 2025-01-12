@@ -589,7 +589,7 @@ def get_leaderboard_rank_command(
 def get_record_command(
     res: Response,
     account_id: int,
-    last_n_hours: Annotated[int, Query(..., description="Last N hours to check", gt=0, le=24)] = 12,
+    last_n_hours: Annotated[int, Query(..., description="Last N hours to check", gt=0, le=24)] = 8,
 ):
     res.headers["Cache-Control"] = "public, max-age=60"
     account_id = utils.validate_steam_id(account_id)
