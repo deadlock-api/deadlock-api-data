@@ -27,14 +27,21 @@ LOGGER = logging.getLogger(__name__)
 
 STEAM_ID_64_IDENT = 76561197960265728
 
+last_discord_msg_timestamp: None | datetime = None
+
 
 def send_webhook_message(message: str):
+    global last_discord_msg_timestamp
     if not CONFIG.discord_webhook_url:
         LOGGER.warning("No Discord webhook URL provided")
+        return
+    if last_discord_msg_timestamp and (datetime.now() - last_discord_msg_timestamp).seconds < 5:
+        LOGGER.warning("Throttling Discord webhook messages")
         return
     webhook = DiscordWebhook(url=CONFIG.discord_webhook_url, content=message)
     LOGGER.info(f"Sending webhook message: {message}")
     webhook.execute()
+    last_discord_msg_timestamp = datetime.now()
 
 
 def is_valid_uuid(value: str | None) -> bool:
