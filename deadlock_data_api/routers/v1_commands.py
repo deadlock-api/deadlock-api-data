@@ -339,7 +339,10 @@ def get_command_resolve(
         "hero_name": hero_name,
     }
     LOGGER.info(f"Resolving command: {kwargs['template']}")
-    command = resolve_command(**kwargs)
+    try:
+        command = resolve_command(**kwargs)
+    except CommandResolveError as e:
+        return str(e)
     LOGGER.info(f"Resolved command: {command}")
     return command
 
