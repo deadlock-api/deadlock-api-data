@@ -294,7 +294,13 @@ def get_command_variables(res: Response) -> list[Variable]:
     variable_resolvers = inspect.getmembers(CommandVariable(), inspect.ismethod)
 
     def to_variable(name, resolver):
-        args = inspect.signature(resolver).parameters.keys() - {"self", "region", "account_id"}
+        args = inspect.signature(resolver).parameters.keys() - {
+            "self",
+            "region",
+            "account_id",
+            "args",
+            "kwargs",
+        }
         return Variable(
             name=name,
             description=resolver.__doc__ if resolver.__doc__ else None,
