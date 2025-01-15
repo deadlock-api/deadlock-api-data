@@ -56,7 +56,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 def get_player_match_history(
-    account_id: int, continue_cursor: int | None = None, account_groups: str | None = None
+    account_id: int,
+    continue_cursor: int | None = None,
+    account_groups: str | None = None,
+    insert_to_ch: bool = True,
 ) -> PlayerMatchHistory:
     if CONFIG.deactivate_match_history and account_groups is None:
         raise HTTPException(
@@ -77,8 +80,9 @@ def get_player_match_history(
     )
     match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
     match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
-    with CH_POOL.get_client() as client:
-        PlayerMatchHistoryEntry.store_clickhouse(client, account_id, match_history)
+    if insert_to_ch:
+        with CH_POOL.get_client() as client:
+            PlayerMatchHistoryEntry.store_clickhouse(client, account_id, match_history)
     return PlayerMatchHistory(cursor=msg.continue_cursor, matches=match_history)
 
 

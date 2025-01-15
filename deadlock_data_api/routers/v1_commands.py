@@ -186,7 +186,7 @@ def get_leaderboard_entry(
 
 
 def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
-    match_history = v2.get_player_match_history(account_id).matches
+    match_history = v2.get_player_match_history(account_id, insert_to_ch=False).matches
     match_history.sort(key=lambda x: x.start_time, reverse=True)
 
     if not match_history:
