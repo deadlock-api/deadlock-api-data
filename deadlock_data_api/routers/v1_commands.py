@@ -111,7 +111,7 @@ def get_record_command(
     res.headers["Cache-Control"] = "public, max-age=60"
     account_id = utils.validate_steam_id(account_id)
     return resolve_command(
-        "{dl_wins_today}W - {dl_losses_today}L", account_id=account_id, last_n_hours=last_n_hours
+        "{wins_today}W - {losses_today}L", account_id=account_id, last_n_hours=last_n_hours
     )
 
 
@@ -213,19 +213,19 @@ class CommandVariable:
         """Get the steam account name"""
         return get_account_name_with_retry_cached(account_id)
 
-    def dl_leaderboard_rank(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
+    def leaderboard_rank(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
         """Get the leaderboard rank"""
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
         return get_rank_name(leaderboard_entry.badge_level)
 
-    def dl_leaderboard_place(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
+    def leaderboard_place(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
         """Get the leaderboard place"""
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
         return str(leaderboard_entry.rank)
 
-    def dl_hero_leaderboard_place(
+    def hero_leaderboard_place(
         self, region: RegionType, account_id: int, hero_name: str, *args, **kwargs
     ) -> str:
         """Get the leaderboard place for a specific hero"""
@@ -237,7 +237,7 @@ class CommandVariable:
         leaderboard_entry = get_leaderboard_entry(region, account_name, hero_id)
         return str(leaderboard_entry.rank)
 
-    def dl_wins_today(
+    def wins_today(
         self,
         account_id: int,
         *args,
@@ -249,7 +249,7 @@ class CommandVariable:
         wins = sum(m.match_result for m in matches)
         return str(wins)
 
-    def dl_losses_today(
+    def losses_today(
         self,
         account_id: int,
         *args,
@@ -261,7 +261,7 @@ class CommandVariable:
         losses = len(matches) - sum(m.match_result for m in matches)
         return str(losses)
 
-    def dl_latest_patchnotes_title(
+    def latest_patchnotes_title(
         self,
         *args,
         **kwargs,
@@ -271,7 +271,7 @@ class CommandVariable:
         latest = sorted(patch_notes, key=lambda x: x.pub_date, reverse=True)[0]
         return latest.title
 
-    def dl_latest_patchnotes_link(
+    def latest_patchnotes_link(
         self,
         *args,
         **kwargs,
