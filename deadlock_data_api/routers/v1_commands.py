@@ -9,6 +9,7 @@ import requests
 from cachetools.func import ttl_cache
 from fastapi import APIRouter
 from fastapi.params import Query
+from pydantic import BaseModel
 from retry import retry
 from starlette.responses import PlainTextResponse, Response
 
@@ -209,14 +210,17 @@ def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
 
 class CommandVariable:
     def steam_account_name(self, account_id: int, *args, **kwargs) -> str:
+        """Get the steam account name"""
         return get_account_name_with_retry_cached(account_id)
 
     def dl_leaderboard_rank(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
+        """Get the leaderboard rank"""
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
         return get_rank_name(leaderboard_entry.badge_level)
 
     def dl_leaderboard_place(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
+        """Get the leaderboard place"""
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
         return str(leaderboard_entry.rank)
@@ -224,6 +228,7 @@ class CommandVariable:
     def dl_hero_leaderboard_place(
         self, region: RegionType, account_id: int, hero_name: str, *args, **kwargs
     ) -> str:
+        """Get the leaderboard place for a specific hero"""
         try:
             hero_id = get_hero_id_with_retry_cached(hero_name)
         except CommandResolveError:
@@ -238,6 +243,7 @@ class CommandVariable:
         *args,
         **kwargs,
     ) -> str:
+        """Get the number of wins today"""
         account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
         wins = sum(m.match_result for m in matches)
@@ -249,6 +255,7 @@ class CommandVariable:
         *args,
         **kwargs,
     ) -> str:
+        """Get the number of losses today"""
         account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
         losses = len(matches) - sum(m.match_result for m in matches)
@@ -259,6 +266,7 @@ class CommandVariable:
         *args,
         **kwargs,
     ) -> str:
+        """Get the title of the latest patch notes"""
         patch_notes = fetch_patch_notes()
         latest = sorted(patch_notes, key=lambda x: x.pub_date, reverse=True)[0]
         return latest.title
@@ -268,16 +276,32 @@ class CommandVariable:
         *args,
         **kwargs,
     ) -> str:
+        """Get the link to the latest patch notes"""
         patch_notes = fetch_patch_notes()
         latest = sorted(patch_notes, key=lambda x: x.pub_date, reverse=True)[0]
         return latest.link
 
 
+class Variable(BaseModel):
+    name: str
+    description: str | None = None
+    extra_args: list[str] | None = None
+
+
 @router.get("/commands/available-variables")
-def get_command_variables(res: Response) -> list[str]:
+def get_command_variables(res: Response) -> list[Variable]:
     res.headers["Cache-Control"] = "public, max-age=60"
     variable_resolvers = inspect.getmembers(CommandVariable(), inspect.ismethod)
-    return [name for name, _ in variable_resolvers]
+
+    def to_variable(name, resolver):
+        args = inspect.signature(resolver).parameters.keys() - {"self", "region", "account_id"}
+        return Variable(
+            name=name,
+            description=resolver.__doc__ if resolver.__doc__ else None,
+            extra_args=list(args) if args else None,
+        )
+
+    return [to_variable(name, resolver) for name, resolver in variable_resolvers]
 
 
 @router.get(
