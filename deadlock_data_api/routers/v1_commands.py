@@ -246,7 +246,7 @@ class CommandVariable:
         """Get the number of wins today"""
         account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
-        wins = sum(m.match_result for m in matches)
+        wins = sum(m.match_result == m.player_team for m in matches)
         return str(wins)
 
     def losses_today(
@@ -258,7 +258,7 @@ class CommandVariable:
         """Get the number of losses today"""
         account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
-        losses = len(matches) - sum(m.match_result for m in matches)
+        losses = sum(m.match_result != m.player_team for m in matches)
         return str(losses)
 
     def latest_patchnotes_title(
