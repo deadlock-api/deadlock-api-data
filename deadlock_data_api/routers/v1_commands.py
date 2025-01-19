@@ -261,6 +261,45 @@ class CommandVariable:
         losses = sum(m.match_result != m.player_team for m in matches)
         return str(losses)
 
+    def highest_kill_count(
+        self,
+        account_id: int,
+        *args,
+        **kwargs,
+    ) -> str:
+        """Get the highest kill count in a match"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(max((m.get("player_kills", 0) for m in matches), default=0))
+
+    def total_kills(
+        self,
+        account_id: int,
+        *args,
+        **kwargs,
+    ) -> str:
+        """Get the total kills in all matches"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(sum(m.get("player_kills", 0) for m in matches))
+
+    def total_matches(
+        self,
+        account_id: int,
+        *args,
+        **kwargs,
+    ) -> str:
+        """Get the total number of matches played"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(len(matches))
+
     def latest_patchnotes_title(
         self,
         *args,
