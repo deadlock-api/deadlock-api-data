@@ -386,7 +386,7 @@ def get_command_resolve(
     return command
 
 
-@router.get("/commands/{region}/{account_id}/resolve")
+@router.get("/commands/{region}/{account_id}/resolve-variables")
 def get_variables_resolve(
     res: Response,
     region: RegionType,
