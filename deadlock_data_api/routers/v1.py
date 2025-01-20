@@ -489,7 +489,7 @@ class DataUrlsResponse(BaseModel):
 
 @router.get(
     "/matches/{match_id}/salts",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 30req/h",
 )
 def get_match_salts(
     req: Request,
