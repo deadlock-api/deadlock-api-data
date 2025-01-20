@@ -475,7 +475,7 @@ async def get_metadata(
     deprecated=True,
 )
 def get_demo_url(match_id: int) -> RedirectResponse:
-    return RedirectResponse(url=f"/v1/matches/{match_id}/salts", status_code=308)
+    return RedirectResponse(url=f"/v1/matches/{match_id}/salts?needs_demo=true", status_code=308)
 
 
 class DataUrlsResponse(BaseModel):
@@ -492,7 +492,11 @@ class DataUrlsResponse(BaseModel):
     summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: 1req/min & 10req/h, API-Key RateLimit: 20req/s",
 )
 def get_match_salts(
-    req: Request, res: Response, match_id: int, account_groups: str | None = None
+    req: Request,
+    res: Response,
+    match_id: int,
+    needs_demo: bool = False,
+    account_groups: str | None = None,
 ) -> DataUrlsResponse:
     limiter.apply_limits(
         req,
@@ -504,12 +508,15 @@ def get_match_salts(
     account_groups = utils.validate_account_groups(
         account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
     )
-    salts = get_match_salts_from_db(match_id, True)
+    salts = get_match_salts_from_db(match_id, needs_demo)
     if salts is None:
         match_start_time = get_match_start_time(match_id)
-        if match_start_time is not None:
-            if datetime.now() - match_start_time > timedelta(days=CONFIG.demo_retention_days):
-                raise HTTPException(status_code=400, detail="Match is too old")
+        if (
+            needs_demo
+            and match_start_time is not None
+            and datetime.now() - match_start_time > timedelta(days=CONFIG.demo_retention_days)
+        ):
+            raise HTTPException(status_code=400, detail="Match is too old")
         limiter.apply_limits(
             req,
             res,
