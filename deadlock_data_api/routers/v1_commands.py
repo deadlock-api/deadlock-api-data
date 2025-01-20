@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 
 import requests
 from cachetools.func import ttl_cache
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.params import Query
 from pydantic import BaseModel
 from retry import retry
@@ -364,7 +364,7 @@ def get_command_resolve(
     hero_name: Annotated[
         str | None, Query(..., description="Hero name to check for hero specific stats")
     ] = None,
-):
+) -> str:
     res.headers["Cache-Control"] = "public, max-age=60"
     account_id = utils.validate_steam_id(account_id)
     if template is None and template_base64 is None:
@@ -386,6 +386,36 @@ def get_command_resolve(
     return command
 
 
+@router.get("/commands/{region}/{account_id}/resolve")
+def get_variables_resolve(
+    res: Response,
+    region: RegionType,
+    account_id: int,
+    variables: Annotated[str, Query(..., description="Variables to resolve, separated by comma")],
+    hero_name: Annotated[
+        str | None, Query(..., description="Hero name to check for hero specific stats")
+    ] = None,
+) -> dict[str, str]:
+    res.headers["Cache-Control"] = "public, max-age=60"
+    account_id = utils.validate_steam_id(account_id)
+    variable_resolvers = inspect.getmembers(CommandVariable(), inspect.ismethod)
+    variables = set(variables.lower().split(","))
+    LOGGER.info(f"Resolving variables: {variables}")
+    kwargs = {
+        "region": region,
+        "account_id": account_id,
+        "hero_name": hero_name,
+    }
+    try:
+        resolved_variables = {
+            name: resolver(**kwargs) for name, resolver in variable_resolvers if name in variables
+        }
+        LOGGER.info(f"Resolved variables: {resolved_variables}")
+        return resolved_variables
+    except CommandResolveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 def resolve_command(template: str, **kwargs) -> str:
     variable_resolvers = inspect.getmembers(CommandVariable(), inspect.ismethod)
     for name, resolver in variable_resolvers:
@@ -395,3 +425,9 @@ def resolve_command(template: str, **kwargs) -> str:
             template = template.replace(template_str, value_str)
             LOGGER.debug(f"Resolved {template_str} to {value_str}")
     return template
+
+
+if __name__ == "__main__":
+    print(CommandVariable().highest_kill_count(74963221))
+    print(CommandVariable().total_kills(74963221))
+    print(CommandVariable().total_matches(74963221))
