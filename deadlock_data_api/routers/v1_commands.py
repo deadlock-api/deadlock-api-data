@@ -300,6 +300,19 @@ class CommandVariable:
         ).json()
         return str(len(matches))
 
+    def hours_played(
+        self,
+        account_id: int,
+        *args,
+        **kwargs,
+    ) -> str:
+        """Get the total hours played in all matches"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(sum(m.get("match_duration_s", 0) for m in matches) // 3600)
+
     def latest_patchnotes_title(
         self,
         *args,
