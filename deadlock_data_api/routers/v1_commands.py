@@ -346,8 +346,8 @@ class CommandVariable:
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
-        return max(
-            (m.get("hero_level", 0) for m in matches if m.get("hero_id") == hero_id), default=0
+        return str(
+            max((m.get("hero_level", 0) for m in matches if m.get("hero_id") == hero_id), default=0)
         )
 
     def total_kills(self, account_id: int, *args, **kwargs) -> str:
@@ -531,7 +531,7 @@ def resolve_command(template: str, **kwargs) -> str:
         template_str = f"{{{name}}}"
         if template_str in template:
             value_str = resolver(**kwargs)
-            template = template.replace(template_str, value_str)
+            template = template.replace(template_str, str(value_str))
             LOGGER.debug(f"Resolved {template_str} to {value_str}")
     return template
 
