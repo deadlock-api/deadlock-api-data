@@ -224,7 +224,7 @@ class CommandVariable:
         """Get the leaderboard place"""
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
-        return str(leaderboard_entry.rank)
+        return f"#{leaderboard_entry.rank}"
 
     def hero_leaderboard_place(
         self, region: RegionType, account_id: int, hero_name: str, *args, **kwargs
@@ -236,7 +236,7 @@ class CommandVariable:
             hero_id = None
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name, hero_id)
-        return str(leaderboard_entry.rank)
+        return f"#{leaderboard_entry.rank}"
 
     def wins_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of wins today"""
@@ -415,7 +415,7 @@ class CommandVariable:
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
-        return str(sum(m.get("match_duration_s", 0) for m in matches) // 3600)
+        return f"{sum(m.get('match_duration_s', 0) for m in matches) // 3600}h"
 
     def latest_patchnotes_title(self, *args, **kwargs) -> str:
         """Get the title of the latest patch notes"""
