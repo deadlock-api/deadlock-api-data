@@ -334,7 +334,16 @@ class CommandVariable:
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
-        matches = [m for m in matches if m.get("match_result") == m.get("player_team")]
+
+        def team_index(team: str) -> int:
+            if team == "Team0":
+                return 0
+            elif team == "Team1":
+                return 1
+            else:
+                return -1
+
+        matches = [m for m in matches if m.get("match_result") == team_index(m.get("player_team"))]
         return str(len(matches))
 
     def total_losses(
@@ -348,7 +357,16 @@ class CommandVariable:
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
-        matches = [m for m in matches if m.get("match_result") != m.get("player_team")]
+
+        def team_index(team: str) -> int:
+            if team == "Team0":
+                return 0
+            elif team == "Team1":
+                return 1
+            else:
+                return -1
+
+        matches = [m for m in matches if m.get("match_result") != team_index(m.get("player_team"))]
         return str(len(matches))
 
     def total_winrate(
