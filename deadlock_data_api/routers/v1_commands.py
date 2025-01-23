@@ -2,6 +2,7 @@ import base64
 import inspect
 import itertools
 import logging
+from collections import Counter
 from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
@@ -237,59 +238,34 @@ class CommandVariable:
         leaderboard_entry = get_leaderboard_entry(region, account_name, hero_id)
         return str(leaderboard_entry.rank)
 
-    def wins_today(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def wins_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of wins today"""
         account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
         wins = sum(m.match_result == m.player_team for m in matches)
         return str(wins)
 
-    def losses_today(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def losses_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of losses today"""
         account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
         losses = sum(m.match_result != m.player_team for m in matches)
         return str(losses)
 
-    def matches_today(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def matches_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of matches today"""
         account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
         return str(len(matches))
 
-    def winrate_today(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def winrate_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of matches today"""
         account_id = utils.validate_steam_id(account_id)
         wins = int(self.wins_today(account_id))
         losses = int(self.losses_today(account_id))
         return f"{wins / (wins + losses):.2%}"
 
-    def wins_losses_today(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def wins_losses_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of wins and losses today"""
         account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
@@ -297,25 +273,84 @@ class CommandVariable:
         losses = sum(m.match_result != m.player_team for m in matches)
         return f"{wins}-{losses}"
 
-    def highest_kill_count(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def highest_kill_count(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest kill count in a match"""
         account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
+        if not matches:
+            return "No matches found"
         return str(max((m.get("player_kills", 0) for m in matches), default=0))
 
-    def total_kills(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def highest_death_count(self, account_id: int, *args, **kwargs) -> str:
+        """Get the highest kill count in a match"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(max((m.get("player_deaths", 0) for m in matches), default=0))
+
+    def highest_net_worth(self, account_id: int, *args, **kwargs) -> str:
+        """Get the highest net worth in a match"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(max((m.get("net_worth", 0) for m in matches), default=0))
+
+    def highest_last_hits(self, account_id: int, *args, **kwargs) -> str:
+        """Get the highest last hits in a match"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(max((m.get("last_hits", 0) for m in matches), default=0))
+
+    def highest_denies(self, account_id: int, *args, **kwargs) -> str:
+        """Get the highest denies in a match"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(max((m.get("denies", 0) for m in matches), default=0))
+
+    def most_played_hero(self, account_id: int, *args, **kwargs) -> str:
+        """Get the most played hero"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        hero_counts = Counter(m.get("hero_id") for m in matches)
+        hero_id, _ = hero_counts.most_common(1)[0]
+        hero_data = requests.get(f"https://assets.deadlock-api.com/v2/heroes/{hero_id}").json()
+        return hero_data.get("name")
+
+    def most_played_hero_count(self, account_id: int, *args, **kwargs) -> str:
+        """Get the most played hero count"""
+        account_id = utils.validate_steam_id(account_id)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        hero_counts = Counter(m.get("hero_id") for m in matches)
+        _, count = hero_counts.most_common(1)[0]
+        return str(count)
+
+    def hero_level(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
+        """Get the hero level"""
+        account_id = utils.validate_steam_id(account_id)
+        try:
+            hero_id = get_hero_id_with_retry_cached(hero_name)
+        except CommandResolveError:
+            return "Hero not found"
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return max(
+            (m.get("hero_level", 0) for m in matches if m.get("hero_id") == hero_id), default=0
+        )
+
+    def total_kills(self, account_id: int, *args, **kwargs) -> str:
         """Get the total kills in all matches"""
         account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
@@ -323,12 +358,7 @@ class CommandVariable:
         ).json()
         return str(sum(m.get("player_kills", 0) for m in matches))
 
-    def total_wins(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def total_wins(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of wins"""
         account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
@@ -346,12 +376,7 @@ class CommandVariable:
         matches = [m for m in matches if m.get("match_result") == team_index(m.get("player_team"))]
         return str(len(matches))
 
-    def total_losses(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def total_losses(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of losses"""
         account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
@@ -369,24 +394,14 @@ class CommandVariable:
         matches = [m for m in matches if m.get("match_result") != team_index(m.get("player_team"))]
         return str(len(matches))
 
-    def total_winrate(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def total_winrate(self, account_id: int, *args, **kwargs) -> str:
         """Get the total winrate"""
         account_id = utils.validate_steam_id(account_id)
         wins = int(self.total_wins(account_id))
         losses = int(self.total_losses(account_id))
         return f"{wins / (wins + losses):.2%}"
 
-    def total_matches(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def total_matches(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of matches played"""
         account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
@@ -394,12 +409,7 @@ class CommandVariable:
         ).json()
         return str(len(matches))
 
-    def hours_played(
-        self,
-        account_id: int,
-        *args,
-        **kwargs,
-    ) -> str:
+    def hours_played(self, account_id: int, *args, **kwargs) -> str:
         """Get the total hours played in all matches"""
         account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
@@ -407,21 +417,13 @@ class CommandVariable:
         ).json()
         return str(sum(m.get("match_duration_s", 0) for m in matches) // 3600)
 
-    def latest_patchnotes_title(
-        self,
-        *args,
-        **kwargs,
-    ) -> str:
+    def latest_patchnotes_title(self, *args, **kwargs) -> str:
         """Get the title of the latest patch notes"""
         patch_notes = fetch_patch_notes()
         latest = sorted(patch_notes, key=lambda x: x.pub_date, reverse=True)[0]
         return latest.title
 
-    def latest_patchnotes_link(
-        self,
-        *args,
-        **kwargs,
-    ) -> str:
+    def latest_patchnotes_link(self, *args, **kwargs) -> str:
         """Get the link to the latest patch notes"""
         patch_notes = fetch_patch_notes()
         latest = sorted(patch_notes, key=lambda x: x.pub_date, reverse=True)[0]
@@ -535,6 +537,7 @@ def resolve_command(template: str, **kwargs) -> str:
 
 
 if __name__ == "__main__":
-    print(CommandVariable().highest_kill_count(74963221))
-    print(CommandVariable().total_kills(74963221))
-    print(CommandVariable().total_matches(74963221))
+    for name, resolver in inspect.getmembers(CommandVariable(), inspect.ismethod):
+        print(
+            name, resolver(**{"region": "NAmerica", "account_id": 74963221, "hero_name": "bebop"})
+        )
