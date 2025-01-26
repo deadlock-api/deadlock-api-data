@@ -138,6 +138,7 @@ class AppConfig:
     sentry_dsn: str | None
     deactivate_match_history: bool = False
     deactivate_match_metadata: bool = False
+    deactivate_live_endpoints: bool = False
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -158,6 +159,7 @@ class AppConfig:
             sentry_dsn=os.environ.get("SENTRY_DSN"),
             deactivate_match_history=os.environ.get("DEACTIVATE_MATCH_HISTORY") == "true",
             deactivate_match_metadata=os.environ.get("DEACTIVATE_MATCH_METADATA") == "true",
+            deactivate_live_endpoints=os.environ.get("DEACTIVATE_LIVE_ENDPOINTS") == "true",
         )
 
 

@@ -21,6 +21,8 @@ router = APIRouter(prefix="/live", tags=["Live"])
     "/matches/{match_id}/start-stream", summary="Rate Limit 1req/min | API-Key Rate Limit 10req/min"
 )
 def start_stream(req: Request, res: Response, match_id: str):
+    if CONFIG.deactivate_live_endpoints:
+        raise HTTPException(status_code=404, detail="Live endpoints are deactivated")
     limiter.apply_limits(
         req,
         res,
@@ -51,6 +53,8 @@ def fetch_active_streams() -> list[int]:
 
 @router.get("/matches/active-streams", summary="Rate Limit 100req/s")
 def get_active_streams(req: Request, res: Response) -> list[int]:
+    if CONFIG.deactivate_live_endpoints:
+        raise HTTPException(status_code=404, detail="Live endpoints are deactivated")
     limiter.apply_limits(
         req,
         res,
@@ -82,6 +86,8 @@ async def message_stream(match_id: int):
 
 @router.get("/matches/{match_id}/stream_sse", summary="Stream game events via Server-Sent Events")
 async def stream_sse(match_id: int) -> StreamingResponse:
+    if CONFIG.deactivate_live_endpoints:
+        raise HTTPException(status_code=404, detail="Live endpoints are deactivated")
     LOGGER.info(f"Streaming match {match_id} via Server-Sent Events")
     if str(match_id) not in fetch_active_streams():
         raise HTTPException(status_code=404, detail="Match not found")
@@ -100,11 +106,16 @@ You can connect to this endpoint using a websocket client.
 """,
 )
 def stream_websocket_dummy(match_id: str) -> dict[str, str]:
+    if CONFIG.deactivate_live_endpoints:
+        raise HTTPException(status_code=404, detail="Live endpoints are deactivated")
     return {"websocket_url": f"wss://data.deadlock-api.com/live/matches/{match_id}/stream_ws"}
 
 
 @router.websocket("/matches/{match_id}/stream_ws")
 async def stream_websocket(websocket: WebSocket, match_id: int):
+    if CONFIG.deactivate_live_endpoints:
+        await websocket.close()
+        raise HTTPException(status_code=404, detail="Live endpoints are deactivated")
     await websocket.accept()
     LOGGER.info(f"Streaming match {match_id} via WebSocket")
     if str(match_id) not in fetch_active_streams():
