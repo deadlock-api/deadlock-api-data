@@ -240,34 +240,29 @@ class CommandVariable:
 
     def wins_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of wins today"""
-        account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
         wins = sum(m.match_result == m.player_team for m in matches)
         return str(wins)
 
     def losses_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of losses today"""
-        account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
         losses = sum(m.match_result != m.player_team for m in matches)
         return str(losses)
 
     def matches_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of matches today"""
-        account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
         return str(len(matches))
 
     def winrate_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of matches today"""
-        account_id = utils.validate_steam_id(account_id)
         wins = int(self.wins_today(account_id))
         losses = int(self.losses_today(account_id))
         return f"{wins / (wins + losses):.2%}"
 
     def wins_losses_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of wins and losses today"""
-        account_id = utils.validate_steam_id(account_id)
         matches = get_daily_matches(account_id)
         wins = sum(m.match_result == m.player_team for m in matches)
         losses = sum(m.match_result != m.player_team for m in matches)
@@ -275,7 +270,6 @@ class CommandVariable:
 
     def highest_kill_count(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest kill count in a match"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -285,7 +279,6 @@ class CommandVariable:
 
     def highest_death_count(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest kill count in a match"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -293,7 +286,6 @@ class CommandVariable:
 
     def highest_net_worth(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest net worth in a match"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -301,7 +293,6 @@ class CommandVariable:
 
     def highest_last_hits(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest last hits in a match"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -309,7 +300,6 @@ class CommandVariable:
 
     def highest_denies(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest denies in a match"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -317,7 +307,6 @@ class CommandVariable:
 
     def most_played_hero(self, account_id: int, *args, **kwargs) -> str:
         """Get the most played hero"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -328,7 +317,6 @@ class CommandVariable:
 
     def most_played_hero_count(self, account_id: int, *args, **kwargs) -> str:
         """Get the most played hero count"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -338,7 +326,6 @@ class CommandVariable:
 
     def hero_level(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
         """Get the hero level"""
-        account_id = utils.validate_steam_id(account_id)
         try:
             hero_id = get_hero_id_with_retry_cached(hero_name)
         except CommandResolveError:
@@ -352,7 +339,6 @@ class CommandVariable:
 
     def total_kills(self, account_id: int, *args, **kwargs) -> str:
         """Get the total kills in all matches"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -360,7 +346,6 @@ class CommandVariable:
 
     def total_wins(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of wins"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -378,7 +363,6 @@ class CommandVariable:
 
     def total_losses(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of losses"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -396,14 +380,12 @@ class CommandVariable:
 
     def total_winrate(self, account_id: int, *args, **kwargs) -> str:
         """Get the total winrate"""
-        account_id = utils.validate_steam_id(account_id)
         wins = int(self.total_wins(account_id))
         losses = int(self.total_losses(account_id))
         return f"{wins / (wins + losses):.2%}"
 
     def total_matches(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of matches played"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -411,7 +393,6 @@ class CommandVariable:
 
     def hours_played(self, account_id: int, *args, **kwargs) -> str:
         """Get the total hours played in all matches"""
-        account_id = utils.validate_steam_id(account_id)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
