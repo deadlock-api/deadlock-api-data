@@ -398,6 +398,20 @@ class CommandVariable:
         ).json()
         return f"{sum(m.get('match_duration_s', 0) for m in matches) // 3600}h"
 
+    def hero_hours_played(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
+        """Get the total hours played in all matches for a specific hero"""
+        try:
+            hero_id = get_hero_id_with_retry_cached(hero_name)
+        except CommandResolveError:
+            return "Hero not found"
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return f"{
+            sum(m.get('match_duration_s', 0) for m in matches if m.get('hero_id') == hero_id)
+            // 3600
+        }h"
+
     def latest_patchnotes_title(self, *args, **kwargs) -> str:
         """Get the title of the latest patch notes"""
         patch_notes = fetch_patch_notes()
