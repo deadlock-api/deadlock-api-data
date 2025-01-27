@@ -256,7 +256,7 @@ class CommandVariable:
         return str(len(matches))
 
     def winrate_today(self, account_id: int, *args, **kwargs) -> str:
-        """Get the number of matches today"""
+        """Get the winrate today"""
         wins = int(self.wins_today(account_id))
         losses = int(self.losses_today(account_id))
         return f"{wins / (wins + losses):.2%}"
@@ -278,7 +278,7 @@ class CommandVariable:
         return str(max((m.get("player_kills", 0) for m in matches), default=0))
 
     def highest_death_count(self, account_id: int, *args, **kwargs) -> str:
-        """Get the highest kill count in a match"""
+        """Get the highest death count in a match"""
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
