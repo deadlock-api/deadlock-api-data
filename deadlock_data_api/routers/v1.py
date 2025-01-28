@@ -75,6 +75,7 @@ def get_patch_notes(res: Response):
 def get_big_patch_days(res: Response) -> list[datetime]:
     res.headers["Cache-Control"] = f"public, max-age={30 * 60}"
     date_string_list = [
+        "2025-01-28T02:10:06Z",
         "2025-01-17T18:40:54Z",
         "2024-12-06T20:05:10Z",
         "2024-11-21T23:21:49Z",
