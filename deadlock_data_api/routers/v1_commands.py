@@ -259,6 +259,8 @@ class CommandVariable:
         """Get the winrate today"""
         wins = int(self.wins_today(account_id))
         losses = int(self.losses_today(account_id))
+        if wins + losses == 0:
+            return "0.00%"
         return f"{wins / (wins + losses):.2%}"
 
     def wins_losses_today(self, account_id: int, *args, **kwargs) -> str:
