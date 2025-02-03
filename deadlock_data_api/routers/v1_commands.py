@@ -3,6 +3,7 @@ import inspect
 import itertools
 import logging
 from collections import Counter
+from collections.abc import Generator
 from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
@@ -10,6 +11,7 @@ import requests
 from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Query
+from more_itertools import peekable
 from pydantic import BaseModel
 from retry import retry
 from starlette.responses import PlainTextResponse, Response
@@ -187,20 +189,31 @@ def get_leaderboard_entry(
     raise CommandResolveError("Player not found in leaderboard")
 
 
-def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
-    match_history = v2.get_player_match_history(account_id, insert_to_ch=False).matches
-    match_history.sort(key=lambda x: x.start_time, reverse=True)
+def next_match_generator(account_id: int) -> Generator[PlayerMatchHistoryEntry, None, None]:
+    last_match_id = None
+    while last_match_id is None or last_match_id > 0:
+        match_history = v2.get_player_match_history(
+            account_id, last_match_id, insert_to_ch=False
+        ).matches
+        if not match_history:
+            raise StopIteration
+        for match in sorted(match_history, key=lambda x: x.start_time, reverse=True):
+            last_match_id = match.match_id
+            yield match
+    raise StopIteration
 
-    if not match_history:
-        return []
+
+def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
+    match_history = peekable(next_match_generator(account_id))
+    first_match = match_history.peek()
 
     # If the first match is older than 8 hours ago, we can assume that the player has no matches today
-    if match_history[0].start_time < int((datetime.now() - timedelta(hours=8)).timestamp()):
+    if first_match.start_time < int((datetime.now() - timedelta(hours=8)).timestamp()):
         return []
 
     # Now we can iterate over the match history
     # All matches that are less than 6 hours apart are considered to be from the same day
-    daily_matches = [match_history[0]]
+    daily_matches = [first_match]
     for last_match, match in itertools.pairwise(match_history):
         break_time = abs(last_match.start_time - match.start_time)
         if break_time > timedelta(hours=6).total_seconds():

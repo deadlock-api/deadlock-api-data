@@ -99,7 +99,9 @@ def call_steam_proxy_raw(
 ) -> bytes:
     assert CONFIG.steam_proxy, "SteamProxyConfig must be configured to call the proxy"
 
-    msg_data = b64encode(msg.SerializeToString()).decode("utf-8")
+    msg = msg.SerializeToString()
+    LOGGER.info(f"Calling Steam proxy: {msg_type=} {msg=} {groups=}")
+    msg_data = b64encode(msg).decode("utf-8")
     body = {
         "message_kind": msg_type,
         "job_cooldown_millis": cooldown_time,
