@@ -179,6 +179,17 @@ def get_rank_name(rank: int) -> str:
     return f"{rank_name} {subrank}"
 
 
+def get_rank_img(rank: int) -> str:
+    rank, subrank = divmod(rank, 10)
+    ranks = get_ranks_with_retry_cached()
+    rank_image = next(
+        (r["images"][f"small_subrank{subrank}"] for r in ranks if r["tier"] == rank), None
+    )
+    if rank_image is None:
+        raise CommandResolveError(f"Failed to get rank image for {rank}")
+    return rank_image
+
+
 def get_leaderboard_entry(
     region: RegionType, account_name: str, hero_id: int | None = None
 ) -> LeaderboardEntry:
@@ -232,6 +243,12 @@ class CommandVariable:
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
         return get_rank_name(leaderboard_entry.badge_level)
+
+    def leaderboard_rank_img(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
+        """Get the leaderboard rank"""
+        account_name = get_account_name_with_retry_cached(account_id)
+        leaderboard_entry = get_leaderboard_entry(region, account_name)
+        return get_rank_img(leaderboard_entry.badge_level)
 
     def leaderboard_place(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
         """Get the leaderboard place"""
