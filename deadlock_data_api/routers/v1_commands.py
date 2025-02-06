@@ -514,7 +514,7 @@ def get_variables_resolve(
     hero_name: Annotated[
         str | None, Query(..., description="Hero name to check for hero specific stats")
     ] = None,
-) -> dict[str, str]:
+) -> dict[str, str | None]:
     res.headers["Cache-Control"] = "public, max-age=60"
     account_id = utils.validate_steam_id(account_id)
     variable_resolvers = inspect.getmembers(CommandVariable(), inspect.ismethod)
