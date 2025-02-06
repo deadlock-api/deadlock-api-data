@@ -359,6 +359,15 @@ class CommandVariable:
         ).json()
         return str(sum(m.get("player_kills", 0) for m in matches))
 
+    def total_kd(self, account_id: int, *args, **kwargs) -> str:
+        """Get the total kills in all matches"""
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        total_kills = sum(m.get("player_kills", 0) for m in matches)
+        total_deaths = sum(m.get("player_deaths", 0) for m in matches)
+        return f"{total_kills / total_deaths:.2f}" if total_deaths > 0 else "0.00"
+
     def total_wins(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of wins"""
         matches = requests.get(
