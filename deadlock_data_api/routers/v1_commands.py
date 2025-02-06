@@ -526,9 +526,13 @@ def get_variables_resolve(
         "hero_name": hero_name,
     }
     try:
-        resolved_variables = {
-            name: resolver(**kwargs) for name, resolver in variable_resolvers if name in variables
-        }
+        resolved_variables = {}
+        for name, resolver in variable_resolvers:
+            if name in variables:
+                try:
+                    resolved_variables[name] = resolver(**kwargs)
+                except CommandResolveError:
+                    resolved_variables[name] = None
         LOGGER.info(f"Resolved variables: {resolved_variables}")
         return resolved_variables
     except CommandResolveError as e:
