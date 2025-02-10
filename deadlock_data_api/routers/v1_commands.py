@@ -91,6 +91,8 @@ def get_hero_leaderboard_rank_command_by_name(
     account_name: str,
     hero_name: str,
 ):
+    if not hero_name:
+        return "Missing hero name"
     hero_data = requests.get(
         f"https://assets.deadlock-api.com/v2/heroes/by-name/{hero_name.strip()}"
     ).json()
@@ -161,6 +163,8 @@ def get_account_name_with_retry_cached(account_id: int) -> str:
 @ttl_cache(ttl=60)
 @retry(tries=3)
 def get_hero_id_with_retry_cached(hero_name: str) -> int:
+    if not hero_name:
+        raise CommandResolveError("Hero name is empty")
     hero_data = requests.get(
         f"https://assets.deadlock-api.com/v2/heroes/by-name/{hero_name.strip()}"
     ).json()
