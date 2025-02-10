@@ -70,12 +70,14 @@ class RouterLoggingMiddleware(BaseHTTPMiddleware):
         res = await self._execute_request(call_next, req, req_id)
         execution_time = time.perf_counter() - start_time
 
-        overall_status = "successful" if res.status_code < 400 else "failed"
-        res_logging = {
-            "status": overall_status,
-            "status_code": res.status_code,
-            "time_taken": f"{execution_time:0.4f}s",
-        }
+        if res:
+            res_logging = {
+                "status": "successful" if res.status_code < 400 else "failed",
+                "status_code": res.status_code,
+                "time_taken": f"{execution_time:0.4f}s",
+            }
+        else:
+            res_logging = {"status": "failed", "status_code": 500}
 
         resp_body = [section async for section in res.__dict__["body_iterator"]]
         res.__setattr__("body_iterator", AsyncIteratorWrapper(resp_body))
