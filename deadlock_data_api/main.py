@@ -118,7 +118,7 @@ def webhook_subscribe(
     webhook_config: WebhookSubscribeRequest,
     api_key=Depends(utils.get_api_key),
 ):
-    print(f"Authenticated with API-Key: {api_key}")
+    LOGGER.debug(f"Authenticated with API-Key: {api_key}")
     api_key = api_key.lstrip("HEXE-")
     with postgres_conn().cursor() as cursor:
         cursor.execute("SELECT 1 FROM webhooks WHERE api_key = %s", (api_key,))
@@ -146,7 +146,7 @@ def webhook_subscribe(
     tags=["Webhooks"],
 )
 def webhook_list(api_key=Depends(utils.get_api_key)):
-    print(f"Authenticated with API-Key: {api_key}")
+    LOGGER.debug(f"Authenticated with API-Key: {api_key}")
     api_key = api_key.lstrip("HEXE-")
     with postgres_conn().cursor() as cursor:
         cursor.execute(
@@ -162,7 +162,7 @@ def webhook_list(api_key=Depends(utils.get_api_key)):
     tags=["Webhooks"],
 )
 def webhook_unsubscribe(subscription_id: str, api_key=Depends(utils.get_api_key)):
-    print(f"Authenticated with API-Key: {api_key}")
+    LOGGER.debug(f"Authenticated with API-Key: {api_key}")
     api_key = api_key.lstrip("HEXE-")
     with postgres_conn().cursor() as cursor:
         cursor.execute(

@@ -546,7 +546,7 @@ def match_created_event(
     match_id: int,
     api_key: APIKey = Depends(utils.get_internal_api_key),
 ):
-    print(f"Authenticated with API-Key: {api_key}")
+    LOGGER.debug(f"Authenticated with API-Key: {api_key}")
     payload = MatchCreatedWebhookPayload(
         match_id=match_id,
         salts_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/salts",
