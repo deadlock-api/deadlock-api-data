@@ -73,6 +73,7 @@ def call_steam_proxy(
         cache_key = f"{msg_type}:{msg.SerializeToString().hex()}"
         cached_value = redis_conn(decode_responses=False).get(cache_key)
         if cached_value:
+            LOGGER.debug(f"Using cached value for {cache_key}")
             return response_type.FromString(cached_value)
     except Exception as e:
         LOGGER.warning(f"Failed to parse cached value: {e}")
