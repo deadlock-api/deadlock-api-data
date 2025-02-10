@@ -31,7 +31,7 @@ def player_match_history(
         "/players/{account_id}/match-history",
         [RateLimit(limit=60, period=60)],
         [RateLimit(limit=100, period=1)],
-        [RateLimit(limit=1000, period=1)],
+        [RateLimit(limit=1000, period=1)] if not account_groups else [],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     account_id = utils.validate_steam_id(account_id)

@@ -324,7 +324,7 @@ def player_match_history(
         "/players/{account_id}/match-history",
         [RateLimit(limit=60, period=60)],
         [RateLimit(limit=100, period=1)],
-        [RateLimit(limit=1000, period=1)],
+        [RateLimit(limit=1000, period=1)] if not account_groups else [],
     )
     res.headers["Cache-Control"] = "public, max-age=900"
     account_id = utils.validate_steam_id(account_id)
@@ -434,7 +434,7 @@ def get_raw_metadata_file(
             "/v1/matches/{match_id}/#steam",
             [RateLimit(limit=30, period=3600)],
             [RateLimit(limit=30, period=3600)],
-            [RateLimit(limit=30, period=3600)],
+            [RateLimit(limit=30, period=3600)] if not account_groups else [],
         )
         salts = get_match_salts_from_steam(match_id, account_groups=account_groups)
     metafile = fetch_metadata(match_id, salts)
@@ -524,7 +524,7 @@ def get_match_salts(
             "/v1/matches/{match_id}/#steam",
             [RateLimit(limit=30, period=3600)],
             [RateLimit(limit=30, period=3600)],
-            [RateLimit(limit=30, period=3600)],
+            [RateLimit(limit=30, period=3600)] if not account_groups else [],
         )
         salts = get_match_salts_from_steam(match_id, True, account_groups)
     metadata_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
