@@ -53,7 +53,7 @@ def apply_limits(
     if global_limits:
         status += [limit_by_key(key, limit) for limit in global_limits]
     for s in status:
-        LOGGER.info(
+        LOGGER.debug(
             f"count: {s.count}, "
             f"limit: {s.limit}, "
             f"period: {s.period}, "

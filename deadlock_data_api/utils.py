@@ -73,7 +73,6 @@ def call_steam_proxy(
         cache_key = f"{msg_type}:{msg.SerializeToString().hex()}"
         cached_value = redis_conn(decode_responses=False).get(cache_key)
         if cached_value:
-            LOGGER.debug(f"Using cached value for {cache_key}")
             return response_type.FromString(cached_value)
     except Exception as e:
         LOGGER.warning(f"Failed to parse cached value: {e}")
@@ -357,3 +356,24 @@ class ExcludeRoutesMiddleware(BaseHTTPMiddleware):
         if path in self.exclude_routes:
             return await self.app(scope, receive, send)
         return await self.middleware(scope, receive, send)
+
+
+class AsyncIteratorWrapper:
+    """The following is a utility class that transforms a
+    regular iterable to an asynchronous one.
+
+    link: https://www.python.org/dev/peps/pep-0492/#example-2
+    """
+
+    def __init__(self, obj):
+        self._it = iter(obj)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            value = next(self._it)
+        except StopIteration:
+            raise StopAsyncIteration
+        return value

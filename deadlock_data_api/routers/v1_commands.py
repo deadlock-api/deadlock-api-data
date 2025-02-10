@@ -522,7 +522,6 @@ def get_command_resolve(
         "template": template,
         "hero_name": hero_name,
     }
-    LOGGER.info(f"Resolving command: {kwargs['template']}")
     try:
         command = resolve_command(**kwargs)
     except CommandResolveError as e:
@@ -545,7 +544,6 @@ def get_variables_resolve(
     account_id = utils.validate_steam_id(account_id)
     variable_resolvers = inspect.getmembers(CommandVariable(), inspect.ismethod)
     variables = set(variables.lower().split(","))
-    LOGGER.info(f"Resolving variables: {variables}")
     kwargs = {
         "region": region,
         "account_id": account_id,

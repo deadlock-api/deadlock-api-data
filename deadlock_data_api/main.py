@@ -1,5 +1,6 @@
-import logging
+import logging.config
 import os
+import sys
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,15 +11,38 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import postgres_conn
+from deadlock_data_api.logging_middleware import RouterLoggingMiddleware
 from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload, WebhookSubscribeRequest
 from deadlock_data_api.routers import base, live, v1, v1_commands, v2
 from deadlock_data_api.utils import ExcludeRoutesMiddleware
 
 # Doesn't use AppConfig because logging is critical
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
+logging.config.dictConfig(
+    {
+        "version": 1,
+        "formatters": {
+            "default": {
+                "format": "%(asctime)s %(process)s %(levelname)s %(name)s %(message)s",
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+            }
+        },
+        "handlers": {
+            "console": {
+                "level": os.environ.get("LOG_LEVEL", "DEBUG"),
+                "class": "logging.StreamHandler",
+                "stream": sys.stderr,
+            }
+        },
+        "root": {"level": "DEBUG", "handlers": ["console"], "propagate": True},
+    }
+)
 logging.getLogger("boto3").setLevel(logging.WARNING)
 logging.getLogger("botocore").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("clickhouse_driver").setLevel(logging.WARNING)
+
+LOGGER = logging.getLogger(__name__)
 
 if CONFIG.sentry_dsn:
     import sentry_sdk
@@ -52,6 +76,7 @@ app.add_middleware(
     minimum_size=1000,
     compresslevel=5,
 )
+app.add_middleware(RouterLoggingMiddleware, logger=LOGGER)
 
 instrumentator = Instrumentator(should_group_status_codes=False).instrument(app)
 
