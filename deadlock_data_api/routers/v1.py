@@ -122,9 +122,22 @@ def get_builds(
     summary="Rate Limit 100req/s",
 )
 def get_build(req: Request, res: Response, build_id: int, version: int | None = None) -> Build:
-    limiter.apply_limits(req, res, "/v1/builds/{id}", [RateLimit(limit=100, period=1)])
+    limiter.apply_limits(req, res, "/v1/builds/{build_id}", [RateLimit(limit=100, period=1)])
     res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
     return load_build(build_id) if version is None else load_build_version(build_id, version)
+
+
+@router.get(
+    "/builds/{build_id}/all-versions",
+    response_model_exclude_none=True,
+    summary="Rate Limit 100req/s",
+)
+def get_builds_by_build_id(req: Request, res: Response, build_id: int) -> list[Build]:
+    limiter.apply_limits(
+        req, res, "/v1/builds/{build_id}/all-versions", [RateLimit(limit=100, period=1)]
+    )
+    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
+    return load_builds(build_id=build_id)
 
 
 @router.get(

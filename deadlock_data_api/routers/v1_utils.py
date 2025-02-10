@@ -165,6 +165,7 @@ def load_builds(
     search_description: str | None = None,
     only_latest: bool = False,
     language: int | None = None,
+    build_id: int | None = None,
 ) -> list[Build]:
     query = """
     WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
@@ -176,6 +177,8 @@ def load_builds(
     """
     if only_latest:
         query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
+    if build_id is not None:
+        query += f" AND build_id = {build_id}"
     if search_name is not None:
         search_name = search_name.lower()
         query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
