@@ -23,10 +23,14 @@ class RouterLoggingMiddleware(BaseHTTPMiddleware):
         request_id = str(uuid4())
         logging_dict = {"X-API-REQUEST-ID": request_id}
 
-        await self.set_body(req)
-        res, res_dict = await self._log_response(call_next, req, request_id)
-        request_dict = await self._log_request(req)
-        logging_dict.update({"request": request_dict, "response": res_dict})
+        try:
+            await self.set_body(req)
+            res, res_dict = await self._log_response(call_next, req, request_id)
+            request_dict = await self._log_request(req)
+            logging_dict.update({"request": request_dict, "response": res_dict})
+        except Exception as e:
+            self._logger.exception(e)
+            raise
 
         self._logger.info(logging_dict)
         return res
