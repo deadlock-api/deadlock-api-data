@@ -76,11 +76,10 @@ class RouterLoggingMiddleware(BaseHTTPMiddleware):
                 "status_code": res.status_code,
                 "time_taken": f"{execution_time:0.4f}s",
             }
+            resp_body = [section async for section in res.__dict__["body_iterator"]]
+            res.__setattr__("body_iterator", AsyncIteratorWrapper(resp_body))
         else:
             res_logging = {"status": "failed", "status_code": 500}
-
-        resp_body = [section async for section in res.__dict__["body_iterator"]]
-        res.__setattr__("body_iterator", AsyncIteratorWrapper(resp_body))
         return res, res_logging
 
     async def _execute_request(self, call_next: Callable, req: Request, req_id: str) -> Any | None:
