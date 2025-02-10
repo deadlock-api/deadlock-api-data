@@ -362,10 +362,7 @@ class CommandVariable:
 
     def hero_level(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
         """Get the hero level"""
-        try:
-            hero_id = get_hero_id_with_retry_cached(hero_name)
-        except CommandResolveError:
-            return "Hero not found"
+        hero_id = get_hero_id_with_retry_cached(hero_name)
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
@@ -380,13 +377,33 @@ class CommandVariable:
         ).json()
         return str(sum(m.get("player_kills", 0) for m in matches))
 
+    def hero_kills(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
+        """Get the total kills in all matches for a specific hero"""
+        hero_id = get_hero_id_with_retry_cached(hero_name)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(sum(m.get("player_kills", 0) for m in matches if m.get("hero_id") == hero_id))
+
     def total_kd(self, account_id: int, *args, **kwargs) -> str:
-        """Get the total kills in all matches"""
+        """Get the KD ratio"""
         matches = requests.get(
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
         total_kills = sum(m.get("player_kills", 0) for m in matches)
         total_deaths = sum(m.get("player_deaths", 0) for m in matches)
+        return f"{total_kills / total_deaths:.2f}" if total_deaths > 0 else "0.00"
+
+    def hero_kd(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
+        """Get the KD ratio for a specific hero"""
+        hero_id = get_hero_id_with_retry_cached(hero_name)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        total_kills = sum(m.get("player_kills", 0) for m in matches if m.get("hero_id") == hero_id)
+        total_deaths = sum(
+            m.get("player_deaths", 0) for m in matches if m.get("hero_id") == hero_id
+        )
         return f"{total_kills / total_deaths:.2f}" if total_deaths > 0 else "0.00"
 
     def total_wins(self, account_id: int, *args, **kwargs) -> str:
@@ -406,6 +423,29 @@ class CommandVariable:
         matches = [m for m in matches if m.get("match_result") == team_index(m.get("player_team"))]
         return str(len(matches))
 
+    def hero_wins(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
+        """Get the total number of wins for a specific hero"""
+        hero_id = get_hero_id_with_retry_cached(hero_name)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+
+        def team_index(team: str) -> int:
+            if team == "Team0":
+                return 0
+            elif team == "Team1":
+                return 1
+            else:
+                return -1
+
+        matches = [
+            m
+            for m in matches
+            if m.get("match_result") == team_index(m.get("player_team"))
+            and m.get("hero_id") == hero_id
+        ]
+        return str(len(matches))
+
     def total_losses(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of losses"""
         matches = requests.get(
@@ -423,10 +463,39 @@ class CommandVariable:
         matches = [m for m in matches if m.get("match_result") != team_index(m.get("player_team"))]
         return str(len(matches))
 
+    def hero_losses(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
+        """Get the total number of losses for a specific hero"""
+        hero_id = get_hero_id_with_retry_cached(hero_name)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+
+        def team_index(team: str) -> int:
+            if team == "Team0":
+                return 0
+            elif team == "Team1":
+                return 1
+            else:
+                return -1
+
+        matches = [
+            m
+            for m in matches
+            if m.get("match_result") != team_index(m.get("player_team"))
+            and m.get("hero_id") == hero_id
+        ]
+        return str(len(matches))
+
     def total_winrate(self, account_id: int, *args, **kwargs) -> str:
         """Get the total winrate"""
         wins = int(self.total_wins(account_id))
         losses = int(self.total_losses(account_id))
+        return f"{wins / (wins + losses):.2%}"
+
+    def hero_winrate(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
+        """Get the total winrate for a specific hero"""
+        wins = int(self.hero_wins(account_id, hero_name))
+        losses = int(self.hero_losses(account_id, hero_name))
         return f"{wins / (wins + losses):.2%}"
 
     def total_matches(self, account_id: int, *args, **kwargs) -> str:
@@ -435,6 +504,14 @@ class CommandVariable:
             f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
         ).json()
         return str(len(matches))
+
+    def hero_matches(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
+        """Get the total number of matches played for a specific hero"""
+        hero_id = get_hero_id_with_retry_cached(hero_name)
+        matches = requests.get(
+            f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        ).json()
+        return str(len([m for m in matches if m.get("hero_id") == hero_id]))
 
     def hours_played(self, account_id: int, *args, **kwargs) -> str:
         """Get the total hours played in all matches"""
