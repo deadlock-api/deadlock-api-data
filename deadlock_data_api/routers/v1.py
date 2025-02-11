@@ -381,7 +381,7 @@ Protobuf definitions can be found here: [https://github.com/SteamDatabase/Protob
 
 Relevant Protobuf Messages: CMsgMatchMetaData, CMsgMatchMetaDataContents
     """,
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 30req/h, Shared Rate Limit with /metadata",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 60req/h, Shared Rate Limit with /metadata",
 )
 def get_raw_metadata_file(
     req: Request,
@@ -445,9 +445,9 @@ def get_raw_metadata_file(
             req,
             res,
             "/v1/matches/{match_id}/#steam",
-            [RateLimit(limit=30, period=3600)],
-            [RateLimit(limit=30, period=3600)],
-            [RateLimit(limit=30, period=3600)] if not account_groups else [],
+            [RateLimit(limit=60, period=3600)],
+            [RateLimit(limit=60, period=3600)],
+            [RateLimit(limit=60, period=3600)] if not account_groups else [],
         )
         salts = get_match_salts_from_steam(match_id, account_groups=account_groups)
     metafile = fetch_metadata(match_id, salts)
@@ -464,7 +464,7 @@ def get_raw_metadata_file(
 
 @router.get(
     "/matches/{match_id}/metadata",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 30req/h, Shared Rate Limit with /raw-metadata",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 60req/h, Shared Rate Limit with /raw-metadata",
 )
 async def get_metadata(
     req: Request,
@@ -485,7 +485,7 @@ async def get_metadata(
 
 @router.get(
     "/matches/{match_id}/demo-url",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 30req/h",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 60req/h",
     deprecated=True,
 )
 def get_demo_url(match_id: int) -> RedirectResponse:
@@ -503,7 +503,7 @@ class DataUrlsResponse(BaseModel):
 
 @router.get(
     "/matches/{match_id}/salts",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 30req/h",
+    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 60req/h",
 )
 def get_match_salts(
     req: Request,
@@ -535,9 +535,9 @@ def get_match_salts(
             req,
             res,
             "/v1/matches/{match_id}/#steam",
-            [RateLimit(limit=30, period=3600)],
-            [RateLimit(limit=30, period=3600)],
-            [RateLimit(limit=30, period=3600)] if not account_groups else [],
+            [RateLimit(limit=60, period=3600)],
+            [RateLimit(limit=60, period=3600)],
+            [RateLimit(limit=60, period=3600)] if not account_groups else [],
         )
         salts = get_match_salts_from_steam(match_id, True, account_groups)
     metadata_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
