@@ -1,7 +1,9 @@
 import base64
 import inspect
 import itertools
+import json
 import logging
+import os.path
 from collections import Counter
 from collections.abc import Generator
 from datetime import datetime, timedelta
@@ -551,6 +553,19 @@ class Variable(BaseModel):
     name: str
     description: str | None = None
     extra_args: list[str] | None = None
+
+
+@router.get("/commands/widget-versions")
+def get_widget_versions(res: Response) -> dict[str, int]:
+    res.headers["Cache-Control"] = "public, max-age=60"
+    try:
+        with open("widget_versions.json") as f:
+            return json.load(f)
+    except FileNotFoundError | json.JSONDecodeError as e:
+        LOGGER.error(
+            f"Failed to load widget versions from {os.path.join(os.getcwd(), 'widget_versions.json')}: {e}"
+        )
+        raise HTTPException(status_code=500, detail="Failed to load widget versions")
 
 
 @router.get("/commands/available-variables")
