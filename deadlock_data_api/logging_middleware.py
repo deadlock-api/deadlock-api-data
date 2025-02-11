@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from collections.abc import Callable
@@ -27,7 +28,7 @@ class RouterLoggingMiddleware(BaseHTTPMiddleware):
             self._logger.exception(e)
             raise
 
-        self._logger.info(logging_dict)
+        self._logger.info(json.dumps(logging_dict))
         return res
 
     async def _log_request(self, req: Request) -> dict[str, Any]:
