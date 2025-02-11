@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from collections.abc import Callable
@@ -9,9 +8,6 @@ from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.types import Message
-
-from deadlock_data_api.utils import AsyncIteratorWrapper
 
 
 class RouterLoggingMiddleware(BaseHTTPMiddleware):
@@ -24,7 +20,6 @@ class RouterLoggingMiddleware(BaseHTTPMiddleware):
         logging_dict = {"X-API-REQUEST-ID": request_id}
 
         try:
-            await self.set_body(req)
             res, res_dict = await self._log_response(call_next, req, request_id)
             request_dict = await self._log_request(req)
             logging_dict.update({"request": request_dict, "response": res_dict})
@@ -34,14 +29,6 @@ class RouterLoggingMiddleware(BaseHTTPMiddleware):
 
         self._logger.info(logging_dict)
         return res
-
-    async def set_body(self, request: Request):
-        receive_ = await request._receive()
-
-        async def receive() -> Message:
-            return receive_
-
-        request._receive = receive
 
     async def _log_request(self, req: Request) -> dict[str, Any]:
         path = req.url.path
@@ -54,11 +41,6 @@ class RouterLoggingMiddleware(BaseHTTPMiddleware):
             api_key = req.headers.get("X-API-Key", req.query_params.get("api_key"))
             request_logging["X-API-Key"] = api_key
         except Exception:
-            pass
-
-        try:
-            request_logging["body"] = await req.json()
-        except json.JSONDecodeError:
             pass
 
         return request_logging
@@ -76,8 +58,6 @@ class RouterLoggingMiddleware(BaseHTTPMiddleware):
                 "status_code": res.status_code,
                 "time_taken": f"{execution_time:0.4f}s",
             }
-            resp_body = [section async for section in res.__dict__["body_iterator"]]
-            res.__setattr__("body_iterator", AsyncIteratorWrapper(resp_body))
         else:
             res_logging = {"status": "failed", "status_code": 500}
         return res, res_logging
