@@ -265,7 +265,7 @@ def player_rank(
         [RateLimit(limit=10, period=60)],
         [RateLimit(limit=20, period=1)],
     )
-    res.headers["Cache-Control"] = "public, max-age=900"
+    res.headers["Cache-Control"] = "public, max-age=60"
     account_id = utils.validate_steam_id(account_id)
     account_groups = utils.validate_account_groups(
         account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
@@ -339,7 +339,7 @@ def player_match_history(
         [RateLimit(limit=100, period=1)],
         [RateLimit(limit=1000, period=1)] if not account_groups else [],
     )
-    res.headers["Cache-Control"] = "public, max-age=900"
+    res.headers["Cache-Control"] = "public, max-age=60"
     account_id = utils.validate_steam_id(account_id)
     account_groups = utils.validate_account_groups(
         account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
