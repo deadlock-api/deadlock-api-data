@@ -222,7 +222,10 @@ def next_match_generator(account_id: int) -> Generator[PlayerMatchHistoryEntry, 
 
 def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
     match_history = peekable(next_match_generator(account_id))
-    first_match = match_history.peek()
+    try:
+        first_match = match_history.peek()
+    except StopIteration:
+        return []
 
     # If the first match is older than 8 hours ago, we can assume that the player has no matches today
     if first_match.start_time < int((datetime.now() - timedelta(hours=8)).timestamp()):
