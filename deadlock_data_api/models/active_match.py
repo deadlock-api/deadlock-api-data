@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from valveprotos_py.citadel_gcmessages_client_pb2 import CMsgDevMatchInfo
 
 
@@ -29,7 +29,6 @@ class ActiveMatch(BaseModel):
     game_mode: int
     match_score: int
     region_mode: int
-    compat_version: int | None = Field(None)
 
     @classmethod
     def from_msg(cls, msg: CMsgDevMatchInfo) -> "ActiveMatch":
@@ -58,7 +57,6 @@ class ActiveMatch(BaseModel):
             game_mode=msg.game_mode,
             match_score=msg.match_score,
             region_mode=msg.region_mode,
-            compat_version=msg.compat_version,
         )
 
 
