@@ -243,7 +243,7 @@ def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
 
 def fetch_full_match_history(account_id: int) -> list[dict]:
     response = requests.get(
-        f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history"
+        f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history?without_avg_badge=true"
     )
     if not response.ok:
         raise CommandResolveError("Failed to fetch match history")
