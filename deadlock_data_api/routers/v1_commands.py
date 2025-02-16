@@ -261,6 +261,14 @@ class CommandVariable:
         leaderboard_entry = get_leaderboard_entry(region, account_name)
         return get_rank_name(leaderboard_entry.badge_level)
 
+    def leaderboard_rank_badge_level(
+        self, region: RegionType, account_id: int, *args, **kwargs
+    ) -> str:
+        """Get the leaderboard rank badge level"""
+        account_name = get_account_name_with_retry_cached(account_id)
+        leaderboard_entry = get_leaderboard_entry(region, account_name)
+        return str(leaderboard_entry.badge_level)
+
     def leaderboard_rank_img(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
         """Get the leaderboard rank"""
         account_name = get_account_name_with_retry_cached(account_id)
