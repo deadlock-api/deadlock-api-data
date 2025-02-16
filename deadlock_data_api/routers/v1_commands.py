@@ -220,8 +220,8 @@ def next_match_generator(account_id: int) -> Generator[PlayerMatchHistoryEntry, 
 
 
 def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
-    match_history = peekable(next_match_generator(account_id))
     try:
+        match_history = peekable(next_match_generator(account_id))
         first_match = match_history.peek()
     except StopIteration:
         return []
