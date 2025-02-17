@@ -372,11 +372,22 @@ def fetch_active_matches_raw(account_groups: str | None = None, retries: int = 3
         raise HTTPException(status_code=500, detail="Failed to fetch active matches")
 
 
-@ttl_cache(ttl=30 * 60)
+last_patch_notes: str = ""
+
+
+@ttl_cache(ttl=60 * 60)
 def fetch_patch_notes() -> list[PatchNote]:
+    global last_patch_notes
     rss_url = "https://forums.playdeadlock.com/forums/changelog.10/index.rss"
-    response = requests.get(rss_url)
-    items = xmltodict.parse(response.text)["rss"]["channel"]["item"]
+    try:
+        response = requests.get(rss_url, timeout=3)
+        response.raise_for_status()
+        patch_notes = response.text
+        last_patch_notes = patch_notes
+    except Exception:
+        LOGGER.exception("Failed to fetch patch notes, using last response")
+        patch_notes = last_patch_notes
+    items = xmltodict.parse(patch_notes)["rss"]["channel"]["item"]
     return [PatchNote.model_validate(item) for item in items]
 
 
