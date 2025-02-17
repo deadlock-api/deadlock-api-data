@@ -325,6 +325,16 @@ class CommandVariable:
         losses = sum(m.match_result != m.player_team for m in matches)
         return f"{wins}-{losses}"
 
+    def heroes_played_today(self, account_id: int, *args, **kwargs) -> str:
+        """Get a list of all heroes played today with the number of matches played"""
+        matches = get_daily_matches(account_id)
+        hero_counts = Counter(m.hero_id for m in matches)
+        hero_data = requests.get("https://assets.deadlock-api.com/v2/heroes").json()
+        hero_name = {hero["id"]: hero["name"] for hero in hero_data}
+        return ", ".join(
+            f"{hero_name.get(hero_id, {})} ({count})" for hero_id, count in hero_counts.items()
+        )
+
     def highest_kill_count(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest kill count in a match"""
         matches = fetch_full_match_history(account_id)
