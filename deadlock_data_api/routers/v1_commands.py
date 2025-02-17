@@ -146,7 +146,7 @@ def get_ranks_with_retry_cached() -> dict:
     return requests.get("https://assets.deadlock-api.com/v2/ranks").json()
 
 
-@ttl_cache(ttl=60)
+@ttl_cache(ttl=60 * 60)
 @retry(tries=3)
 def get_account_name_with_retry_cached(account_id: int) -> str:
     account_id = utils.steamid3_to_steamid64(account_id)
