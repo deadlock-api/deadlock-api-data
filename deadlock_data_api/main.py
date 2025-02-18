@@ -11,7 +11,6 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import postgres_conn
-from deadlock_data_api.logging_middleware import RouterLoggingMiddleware
 from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload, WebhookSubscribeRequest
 from deadlock_data_api.routers import base, live, v1, v1_commands, v2
 from deadlock_data_api.utils import ExcludeRoutesMiddleware
@@ -76,7 +75,10 @@ app.add_middleware(
     minimum_size=1000,
     compresslevel=5,
 )
-app.add_middleware(RouterLoggingMiddleware, logger=LOGGER)
+if os.environ.get("LOGGING_MIDDLEWARE", "true").lower() == "true":
+    from deadlock_data_api.logging_middleware import RouterLoggingMiddleware
+
+    app.add_middleware(RouterLoggingMiddleware, logger=LOGGER)
 
 instrumentator = Instrumentator(should_group_status_codes=False).instrument(app)
 
