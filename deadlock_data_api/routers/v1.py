@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Literal
 
+import botocore.exceptions
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.openapi.models import APIKey
 from google.protobuf.json_format import MessageToDict
@@ -428,8 +429,12 @@ def get_raw_metadata_file(
         except Exception:
             pass
     if key is not None:
-        obj = s3_main_conn().get_object(Bucket=CONFIG.s3_main.meta_file_bucket_name, Key=key)
-        body = obj["Body"].read()
+        try:
+            obj = s3_main_conn().get_object(Bucket=CONFIG.s3_main.meta_file_bucket_name, Key=key)
+            body = obj["Body"].read()
+        except botocore.exceptions.ClientError:
+            LOGGER.error("Failed to get metadata from S3")
+            raise HTTPException(status_code=500, detail="Failed to get metadata from S3")
         background_tasks.add_task(cache_metadata_background, match_id, body)
         return Response(
             content=body,
