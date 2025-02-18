@@ -194,15 +194,6 @@ def match_metadata_created() -> MatchCreatedWebhookPayload:
 
 
 if __name__ == "__main__":
-    import granian
-    from granian.constants import Interfaces
-    from granian.log import LogLevels
+    import uvicorn
 
-    granian.Granian(
-        "deadlock_data_api.main:app",
-        address="0.0.0.0",
-        port=8080,
-        interface=Interfaces.ASGI,
-        log_level=LogLevels.debug,
-        websockets=True,
-    ).serve()
+    uvicorn.run(app, host="0.0.0.0", port=8080)
