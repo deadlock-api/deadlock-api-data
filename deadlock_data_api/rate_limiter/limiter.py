@@ -66,6 +66,8 @@ def apply_limits(
             except HTTPException as e:
                 LOGGER.warning(f"Rate limit exceeded: {e.headers} by {ip=} {api_key=}")
                 raise e
+    if not status:
+        return
     status = sorted(status, key=lambda x: x.remaining)[0]
     response.headers.update(status.headers)
 
