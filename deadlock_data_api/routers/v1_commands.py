@@ -161,7 +161,7 @@ def get_account_name_with_retry_cached(account_id: int) -> str:
     return account["personaname"]
 
 
-@ttl_cache(ttl=60)
+@ttl_cache(ttl=60 * 60)
 @retry(tries=3)
 def get_hero_id_with_retry_cached(hero_name: str) -> int:
     if not hero_name:
