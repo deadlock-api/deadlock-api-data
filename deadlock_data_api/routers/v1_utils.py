@@ -4,7 +4,6 @@ from typing import Literal
 
 import requests
 import snappy
-import xmltodict
 from cachetools.func import ttl_cache
 from fastapi import HTTPException
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_503_SERVICE_UNAVAILABLE
@@ -33,10 +32,8 @@ from valveprotos_py.citadel_gcmessages_common_pb2 import (
 )
 
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.globs import CH_POOL, postgres_conn
-from deadlock_data_api.models.build import Build
+from deadlock_data_api.globs import CH_POOL
 from deadlock_data_api.models.leaderboard import Leaderboard
-from deadlock_data_api.models.patch_note import PatchNote
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
     PlayerMatchHistory,
@@ -49,7 +46,7 @@ from deadlock_data_api.utils import (
 )
 
 CACHE_AGE_ACTIVE_MATCHES = 20
-CACHE_AGE_BUILDS = 5 * 60
+# CACHE_AGE_BUILDS = 5 * 60
 LOAD_FILE_RETRIES = 5
 
 LOGGER = logging.getLogger(__name__)
@@ -155,196 +152,192 @@ def fetch_metadata(match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse)
     return metafile
 
 
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds(
-    start: int | None = None,
-    limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
-    sort_direction: Literal["asc", "desc"] = "desc",
-    search_name: str | None = None,
-    search_description: str | None = None,
-    only_latest: bool = False,
-    language: int | None = None,
-    build_id: int | None = None,
-) -> list[Build]:
-    query = """
-    WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
-                          FROM hero_builds
-                          ORDER BY build_id, version DESC)
-    SELECT data as builds
-    FROM hero_builds
-    WHERE TRUE
-    """
-    if only_latest:
-        query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
-    if build_id is not None:
-        query += f" AND build_id = {build_id}"
-    if search_name is not None:
-        search_name = search_name.lower()
-        query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
-    if search_description is not None:
-        search_description = search_description.lower()
-        query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
-    if language is not None:
-        query += f" AND language = {language}"
-    args = []
-    if sort_by is not None:
-        if sort_by == "favorites":
-            query += " ORDER BY favorites"
-        elif sort_by == "ignores":
-            query += " ORDER BY ignores"
-        elif sort_by == "reports":
-            query += " ORDER BY reports"
-        elif sort_by == "updated_at":
-            query += " ORDER BY updated_at"
-        if sort_direction is not None:
-            query += f" {sort_direction}"
-
-    if limit is not None or start is not None:
-        if start is None:
-            start = 0
-        if limit is None:
-            raise HTTPException(status_code=400, detail="Start cannot be provided without limit")
-        if limit != -1:
-            query += " LIMIT %s OFFSET %s"
-            args += [limit, start]
-
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, tuple(args))
-        results = cursor.fetchall()
-    return [b for b in [Build.model_validate(result[0]) for result in results] if b]
+# @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
+# def load_builds(
+#     start: int | None = None,
+#     limit: int | None = 100,
+#     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
+#     sort_direction: Literal["asc", "desc"] = "desc",
+#     search_name: str | None = None,
+#     search_description: str | None = None,
+#     only_latest: bool = False,
+#     language: int | None = None,
+#     build_id: int | None = None,
+# ) -> list[Build]:
+#     query = """
+#     WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version FROM hero_builds ORDER BY build_id, version DESC)
+#     SELECT data as builds FROM hero_builds WHERE TRUE
+#     """
+#     if only_latest:
+#         query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
+#     if build_id is not None:
+#         query += f" AND build_id = {build_id}"
+#     if search_name is not None:
+#         search_name = search_name.lower()
+#         query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
+#     if search_description is not None:
+#         search_description = search_description.lower()
+#         query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
+#     if language is not None:
+#         query += f" AND language = {language}"
+#     args = []
+#     if sort_by is not None:
+#         if sort_by == "favorites":
+#             query += " ORDER BY favorites"
+#         elif sort_by == "ignores":
+#             query += " ORDER BY ignores"
+#         elif sort_by == "reports":
+#             query += " ORDER BY reports"
+#         elif sort_by == "updated_at":
+#             query += " ORDER BY updated_at"
+#         if sort_direction is not None:
+#             query += f" {sort_direction}"
+#
+#     if limit is not None or start is not None:
+#         if start is None:
+#             start = 0
+#         if limit is None:
+#             raise HTTPException(status_code=400, detail="Start cannot be provided without limit")
+#         if limit != -1:
+#             query += " LIMIT %s OFFSET %s"
+#             args += [limit, start]
+#
+#     conn = postgres_conn()
+#     with conn.cursor() as cursor:
+#         cursor.execute(query, tuple(args))
+#         results = cursor.fetchall()
+#     return [b for b in [Build.model_validate(result[0]) for result in results] if b]
 
 
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds_by_hero(
-    hero_id: int,
-    start: int | None = None,
-    limit: int | None = 100,
-    sort_by: (Literal["favorites", "ignores", "reports", "updated_at"] | None) = "favorites",
-    sort_direction: Literal["asc", "desc"] = "desc",
-    search_name: str | None = None,
-    search_description: str | None = None,
-    only_latest: bool = False,
-    language: int | None = None,
-) -> list[Build]:
-    query = """
-    WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
-                          FROM hero_builds
-                          ORDER BY build_id, version DESC)
-    SELECT data as builds
-    FROM hero_builds
-    WHERE hero = %s
-    """
-    if only_latest:
-        query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
-    if search_name is not None:
-        search_name = search_name.lower()
-        query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
-    if search_description is not None:
-        search_description = search_description.lower()
-        query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
-    if language is not None:
-        query += f" AND language = {language}"
-    args = [hero_id]
-    if sort_by is not None:
-        if sort_by == "favorites":
-            query += " ORDER BY favorites"
-        elif sort_by == "ignores":
-            query += " ORDER BY ignores"
-        elif sort_by == "reports":
-            query += " ORDER BY reports"
-        elif sort_by == "updated_at":
-            query += " ORDER BY updated_at"
-        if sort_direction is not None:
-            query += f" {sort_direction}"
-
-    if limit is not None or start is not None:
-        if start is None:
-            start = 0
-        if limit is None:
-            raise HTTPException(status_code=400, detail="Start cannot be provided without limit")
-        if limit != -1:
-            query += " LIMIT %s OFFSET %s"
-            args += [limit, start]
-
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, tuple(args))
-        results = cursor.fetchall()
-    return [b for b in [Build.model_validate(result[0]) for result in results] if b]
-
-
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_builds_by_author(
-    author_id: int,
-    start: int | None = None,
-    limit: int | None = 100,
-    sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
-    sort_direction: Literal["asc", "desc"] = "desc",
-    only_latest: bool = False,
-) -> list[Build]:
-    query = """
-    WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
-                          FROM hero_builds
-                          ORDER BY build_id, version DESC)
-    SELECT data as builds
-    FROM hero_builds
-    WHERE author_id = %s
-    """
-    if only_latest:
-        query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
-    args = [author_id]
-    if sort_by is not None:
-        if sort_by == "favorites":
-            query += " ORDER BY favorites"
-        elif sort_by == "ignores":
-            query += " ORDER BY ignores"
-        elif sort_by == "reports":
-            query += " ORDER BY reports"
-        elif sort_by == "updated_at":
-            query += " ORDER BY updated_at"
-        if sort_direction is not None:
-            query += f" {sort_direction}"
-
-    if limit is not None or start is not None:
-        if start is None:
-            start = 0
-        if limit is None:
-            raise HTTPException(status_code=400, detail="Start cannot be provided without limit")
-        if limit != -1:
-            query += " LIMIT %s OFFSET %s"
-            args += [limit, start]
-
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, tuple(args))
-        results = cursor.fetchall()
-    return [b for b in [Build.model_validate(result[0]) for result in results] if b]
+# @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
+# def load_builds_by_hero(
+#     hero_id: int,
+#     start: int | None = None,
+#     limit: int | None = 100,
+#     sort_by: (Literal["favorites", "ignores", "reports", "updated_at"] | None) = "favorites",
+#     sort_direction: Literal["asc", "desc"] = "desc",
+#     search_name: str | None = None,
+#     search_description: str | None = None,
+#     only_latest: bool = False,
+#     language: int | None = None,
+# ) -> list[Build]:
+#     query = """
+#     WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
+#                           FROM hero_builds
+#                           ORDER BY build_id, version DESC)
+#     SELECT data as builds
+#     FROM hero_builds
+#     WHERE hero = %s
+#     """
+#     if only_latest:
+#         query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
+#     if search_name is not None:
+#         search_name = search_name.lower()
+#         query += f" AND lower(data->'hero_build'->>'name') LIKE '%%{search_name}%%'"
+#     if search_description is not None:
+#         search_description = search_description.lower()
+#         query += f" AND lower(data->'hero_build'->>'description') LIKE '%%{search_description}%%'"
+#     if language is not None:
+#         query += f" AND language = {language}"
+#     args = [hero_id]
+#     if sort_by is not None:
+#         if sort_by == "favorites":
+#             query += " ORDER BY favorites"
+#         elif sort_by == "ignores":
+#             query += " ORDER BY ignores"
+#         elif sort_by == "reports":
+#             query += " ORDER BY reports"
+#         elif sort_by == "updated_at":
+#             query += " ORDER BY updated_at"
+#         if sort_direction is not None:
+#             query += f" {sort_direction}"
+#
+#     if limit is not None or start is not None:
+#         if start is None:
+#             start = 0
+#         if limit is None:
+#             raise HTTPException(status_code=400, detail="Start cannot be provided without limit")
+#         if limit != -1:
+#             query += " LIMIT %s OFFSET %s"
+#             args += [limit, start]
+#
+#     conn = postgres_conn()
+#     with conn.cursor() as cursor:
+#         cursor.execute(query, tuple(args))
+#         results = cursor.fetchall()
+#     return [b for b in [Build.model_validate(result[0]) for result in results] if b]
 
 
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_build(build_id: int) -> Build:
-    query = "SELECT data FROM hero_builds WHERE build_id = %s ORDER BY version DESC LIMIT 1"
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, (build_id,))
-        result = cursor.fetchone()
-        if result is None:
-            raise HTTPException(status_code=404, detail="Build not found")
-        return Build.model_validate(result[0])
+# @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
+# def load_builds_by_author(
+#     author_id: int,
+#     start: int | None = None,
+#     limit: int | None = 100,
+#     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
+#     sort_direction: Literal["asc", "desc"] = "desc",
+#     only_latest: bool = False,
+# ) -> list[Build]:
+#     query = """
+#     WITH latest_build_versions as (SELECT DISTINCT ON (build_id) build_id, version
+#                           FROM hero_builds
+#                           ORDER BY build_id, version DESC)
+#     SELECT data as builds
+#     FROM hero_builds
+#     WHERE author_id = %s
+#     """
+#     if only_latest:
+#         query += " AND (build_id, version) IN (SELECT build_id, version FROM latest_build_versions)"
+#     args = [author_id]
+#     if sort_by is not None:
+#         if sort_by == "favorites":
+#             query += " ORDER BY favorites"
+#         elif sort_by == "ignores":
+#             query += " ORDER BY ignores"
+#         elif sort_by == "reports":
+#             query += " ORDER BY reports"
+#         elif sort_by == "updated_at":
+#             query += " ORDER BY updated_at"
+#         if sort_direction is not None:
+#             query += f" {sort_direction}"
+#
+#     if limit is not None or start is not None:
+#         if start is None:
+#             start = 0
+#         if limit is None:
+#             raise HTTPException(status_code=400, detail="Start cannot be provided without limit")
+#         if limit != -1:
+#             query += " LIMIT %s OFFSET %s"
+#             args += [limit, start]
+#
+#     conn = postgres_conn()
+#     with conn.cursor() as cursor:
+#         cursor.execute(query, tuple(args))
+#         results = cursor.fetchall()
+#     return [b for b in [Build.model_validate(result[0]) for result in results] if b]
 
 
-@ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
-def load_build_version(build_id: int, version: int) -> Build:
-    query = "SELECT data FROM hero_builds WHERE build_id = %s AND version = %s"
-    conn = postgres_conn()
-    with conn.cursor() as cursor:
-        cursor.execute(query, (build_id, version))
-        result = cursor.fetchone()
-        if result is None:
-            raise HTTPException(status_code=404, detail="Build not found")
-        return Build.model_validate(result[0])
+# @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
+# def load_build(build_id: int) -> Build:
+#     query = "SELECT data FROM hero_builds WHERE build_id = %s ORDER BY version DESC LIMIT 1"
+#     conn = postgres_conn()
+#     with conn.cursor() as cursor:
+#         cursor.execute(query, (build_id,))
+#         result = cursor.fetchone()
+#         if result is None:
+#             raise HTTPException(status_code=404, detail="Build not found")
+#         return Build.model_validate(result[0])
+
+
+# @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)
+# def load_build_version(build_id: int, version: int) -> Build:
+#     query = "SELECT data FROM hero_builds WHERE build_id = %s AND version = %s"
+#     conn = postgres_conn()
+#     with conn.cursor() as cursor:
+#         cursor.execute(query, (build_id, version))
+#         result = cursor.fetchone()
+#         if result is None:
+#             raise HTTPException(status_code=404, detail="Build not found")
+#         return Build.model_validate(result[0])
 
 
 @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
@@ -372,23 +365,23 @@ def fetch_active_matches_raw(account_groups: str | None = None, retries: int = 3
         raise HTTPException(status_code=500, detail="Failed to fetch active matches")
 
 
-last_patch_notes: str = ""
-
-
-@ttl_cache(ttl=60 * 60)
-def fetch_patch_notes() -> list[PatchNote]:
-    global last_patch_notes
-    rss_url = "https://forums.playdeadlock.com/forums/changelog.10/index.rss"
-    try:
-        response = requests.get(rss_url, timeout=3)
-        response.raise_for_status()
-        patch_notes = response.text
-        last_patch_notes = patch_notes
-    except Exception:
-        LOGGER.exception("Failed to fetch patch notes, using last response")
-        patch_notes = last_patch_notes
-    items = xmltodict.parse(patch_notes)["rss"]["channel"]["item"]
-    return [PatchNote.model_validate(item) for item in items]
+# last_patch_notes: str = ""
+#
+#
+# @ttl_cache(ttl=60 * 60)
+# def fetch_patch_notes() -> list[PatchNote]:
+#     global last_patch_notes
+#     rss_url = "https://forums.playdeadlock.com/forums/changelog.10/index.rss"
+#     try:
+#         response = requests.get(rss_url, timeout=3)
+#         response.raise_for_status()
+#         patch_notes = response.text
+#         last_patch_notes = patch_notes
+#     except Exception:
+#         LOGGER.exception("Failed to fetch patch notes, using last response")
+#         patch_notes = last_patch_notes
+#     items = xmltodict.parse(patch_notes)["rss"]["channel"]["item"]
+#     return [PatchNote.model_validate(item) for item in items]
 
 
 def get_player_rank(account_id: int, account_groups: str | None = None) -> PlayerCard:

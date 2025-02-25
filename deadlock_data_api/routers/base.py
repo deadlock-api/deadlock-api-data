@@ -2,10 +2,9 @@ import logging
 
 from fastapi import APIRouter
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import RedirectResponse, Response
 
 from deadlock_data_api.models.active_match import ActiveMatch
-from deadlock_data_api.models.build import Build
 from deadlock_data_api.routers import v1
 
 LOGGER = logging.getLogger(__name__)
@@ -13,19 +12,46 @@ LOGGER = logging.getLogger(__name__)
 router = APIRouter(include_in_schema=False)
 
 
-@router.get("/builds", response_model_exclude_none=True)
-def get_builds(req: Request, res: Response) -> list[Build]:
-    return v1.get_builds(req, res)
+@router.get(
+    "/builds",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/builds
+    """,
+    deprecated=True,
+)
+def get_builds(req: Request) -> RedirectResponse:
+    return v1.get_builds(req)
 
 
-@router.get("/builds/{build_id}", response_model_exclude_none=True)
-def get_build(req: Request, res: Response, build_id: int) -> Build:
-    return v1.get_build(req, res, build_id)
+@router.get(
+    "/builds/{build_id}",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/builds
+    """,
+    deprecated=True,
+)
+def get_build(build_id: int, version: int) -> RedirectResponse:
+    return v1.get_build(build_id, version)
 
 
-@router.get("/builds/by-hero-id/{hero_id}", response_model_exclude_none=True)
-def get_builds_by_hero_id(req: Request, res: Response, hero_id: int) -> list[Build]:
-    return v1.get_builds_by_hero_id(req, res, hero_id)
+@router.get(
+    "/builds/by-hero-id/{hero_id}",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/builds
+    """,
+    deprecated=True,
+)
+def get_builds_by_hero_id(req: Request, hero_id: int) -> RedirectResponse:
+    return v1.get_builds_by_hero_id(req, hero_id)
 
 
 @router.get("/active-matches", response_model_exclude_none=True)

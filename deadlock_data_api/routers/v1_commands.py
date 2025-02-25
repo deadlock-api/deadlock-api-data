@@ -23,7 +23,7 @@ from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.models.leaderboard import Leaderboard, LeaderboardEntry
 from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
 from deadlock_data_api.routers import v2
-from deadlock_data_api.routers.v1_utils import fetch_patch_notes, get_leaderboard
+from deadlock_data_api.routers.v1_utils import get_leaderboard
 
 LOGGER = logging.getLogger(__name__)
 
@@ -252,6 +252,11 @@ def fetch_full_match_history(account_id: int) -> list[dict]:
     if not response.ok:
         raise CommandResolveError("Failed to fetch match history")
     return response.json()
+
+
+@ttl_cache(ttl=60 * 60)
+def fetch_patch_notes() -> list[dict]:
+    return requests.get("https://api.deadlock-api.com/v1/patches", timeout=5).json()
 
 
 class CommandVariable:
@@ -530,14 +535,14 @@ class CommandVariable:
     def latest_patchnotes_title(self, *args, **kwargs) -> str:
         """Get the title of the latest patch notes"""
         patch_notes = fetch_patch_notes()
-        latest = sorted(patch_notes, key=lambda x: x.pub_date, reverse=True)[0]
-        return latest.title
+        latest = sorted(patch_notes, key=lambda x: x["pub_date"], reverse=True)[0]
+        return latest["title"]
 
     def latest_patchnotes_link(self, *args, **kwargs) -> str:
         """Get the link to the latest patch notes"""
         patch_notes = fetch_patch_notes()
-        latest = sorted(patch_notes, key=lambda x: x.pub_date, reverse=True)[0]
-        return latest.link
+        latest = sorted(patch_notes, key=lambda x: x["pub_date"], reverse=True)[0]
+        return latest["link"]
 
 
 class Variable(BaseModel):

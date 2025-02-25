@@ -8,8 +8,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.openapi.models import APIKey
 from google.protobuf.json_format import MessageToDict
 from pydantic import BaseModel
+from starlette.datastructures import URL
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
+from starlette.status import HTTP_301_MOVED_PERMANENTLY
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgClientToGCGetActiveMatchesResponse,
 )
@@ -22,7 +24,6 @@ from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import s3_main_conn
 from deadlock_data_api.models.active_match import ActiveMatch
-from deadlock_data_api.models.build import Build
 from deadlock_data_api.models.leaderboard import Leaderboard
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
@@ -34,65 +35,67 @@ from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
     fetch_active_matches_raw,
     fetch_metadata,
-    fetch_patch_notes,
     get_leaderboard,
     get_match_salts_from_db,
     get_match_salts_from_steam,
     get_match_start_time,
     get_player_match_history,
     get_player_rank,
-    load_build,
-    load_build_version,
-    load_builds,
-    load_builds_by_author,
-    load_builds_by_hero,
 )
 from deadlock_data_api.utils import cache_file, get_cached_file, send_webhook_event
 
 CACHE_AGE_ACTIVE_MATCHES = 20
-CACHE_AGE_BUILDS = 5 * 60
+# CACHE_AGE_BUILDS = 5 * 60
 
 LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1", tags=["V1"])
 
 
-@router.get("/patch-notes", summary="No Rate Limits")
-def get_patch_notes(res: Response):
-    res.headers["Cache-Control"] = f"public, max-age={30 * 60}"
-    return fetch_patch_notes()
+@router.get(
+    "/patch-notes",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/patches/big-days
+    """,
+    deprecated=True,
+)
+def get_patch_notes():
+    return RedirectResponse(
+        "https://api.deadlock-api.com/v1/patches", status_code=HTTP_301_MOVED_PERMANENTLY
+    )
 
 
 @router.get(
     "/big-patch-days",
+    summary="Moved to new API: http://api.deadlock-api.com/",
     description="""
-            Returns a list of dates where Deadlock's "big" patch days were, usually bi-weekly.
-            The exact date is the time when the announcement forum post was published.
-
-            This list is manually maintained, and so new patch dates may be delayed by a few hours.
-            """,
-    summary="No Rate Limits",
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/patches/big-days
+    """,
+    deprecated=True,
 )
-def get_big_patch_days(res: Response) -> list[datetime]:
-    res.headers["Cache-Control"] = f"public, max-age={30 * 60}"
-    date_string_list = [
-        "2025-01-28T02:10:06Z",
-        "2025-01-17T18:40:54Z",
-        "2024-12-06T20:05:10Z",
-        "2024-11-21T23:21:49Z",
-        "2024-11-07T21:31:34Z",
-        "2024-10-24T19:39:08Z",
-        "2024-10-10T20:24:45Z",
-        "2024-09-26T21:17:58Z",
-    ]
-
-    return [datetime.fromisoformat(date_string) for date_string in date_string_list]
+def get_big_patch_days() -> RedirectResponse:
+    return RedirectResponse(
+        "https://api.deadlock-api.com/v1/patches/big-days", status_code=HTTP_301_MOVED_PERMANENTLY
+    )
 
 
-@router.get("/builds", response_model_exclude_none=True, summary="Rate Limit 100req/s")
+@router.get(
+    "/builds",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/builds
+    """,
+    deprecated=True,
+)
 def get_builds(
     req: Request,
-    res: Response,
     start: int | None = None,
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
@@ -101,54 +104,55 @@ def get_builds(
     search_description: str | None = None,
     only_latest: bool | None = None,
     language: int | None = None,
-) -> list[Build]:
-    only_latest = only_latest or False
-    limiter.apply_limits(req, res, "/v1/builds", [RateLimit(limit=100, period=1)])
-    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds(
-        start,
-        limit,
-        sort_by,
-        sort_direction,
-        search_name,
-        search_description,
-        only_latest,
-        language,
-    )
+) -> RedirectResponse:
+    url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(**req.query_params)
+    return RedirectResponse(url, status_code=HTTP_301_MOVED_PERMANENTLY)
 
 
 @router.get(
     "/builds/{build_id}",
-    response_model_exclude_none=True,
-    summary="Rate Limit 100req/s",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/builds
+    """,
+    deprecated=True,
 )
-def get_build(req: Request, res: Response, build_id: int, version: int | None = None) -> Build:
-    limiter.apply_limits(req, res, "/v1/builds/{build_id}", [RateLimit(limit=100, period=1)])
-    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_build(build_id) if version is None else load_build_version(build_id, version)
+def get_build(build_id: int, version: int | None = None) -> RedirectResponse:
+    url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(
+        build_id=build_id, version=version
+    )
+    return RedirectResponse(url, status_code=HTTP_301_MOVED_PERMANENTLY)
 
 
 @router.get(
     "/builds/{build_id}/all-versions",
-    response_model_exclude_none=True,
-    summary="Rate Limit 100req/s",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/builds
+    """,
+    deprecated=True,
 )
-def get_builds_by_build_id(req: Request, res: Response, build_id: int) -> list[Build]:
-    limiter.apply_limits(
-        req, res, "/v1/builds/{build_id}/all-versions", [RateLimit(limit=100, period=1)]
-    )
-    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds(build_id=build_id)
+def get_builds_by_build_id(build_id: int) -> RedirectResponse:
+    url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(build_id=build_id)
+    return RedirectResponse(url, status_code=HTTP_301_MOVED_PERMANENTLY)
 
 
 @router.get(
     "/builds/by-hero-id/{hero_id}",
-    response_model_exclude_none=True,
-    summary="Rate Limit 100req/s",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/builds
+    """,
+    deprecated=True,
 )
 def get_builds_by_hero_id(
     req: Request,
-    res: Response,
     hero_id: int,
     start: int | None = None,
     limit: int | None = 100,
@@ -158,49 +162,36 @@ def get_builds_by_hero_id(
     search_description: str | None = None,
     only_latest: bool | None = None,
     language: int | None = None,
-) -> list[Build]:
-    only_latest = only_latest or False
-    limiter.apply_limits(
-        req, res, "/v1/builds/by-hero-id/{hero_id}", [RateLimit(limit=100, period=1)]
+) -> RedirectResponse:
+    url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(
+        hero_id=hero_id, **req.query_params
     )
-    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_hero(
-        hero_id,
-        start,
-        limit,
-        sort_by,
-        sort_direction,
-        search_name,
-        search_description,
-        only_latest,
-        language,
-    )
+    return RedirectResponse(url, status_code=HTTP_301_MOVED_PERMANENTLY)
 
 
 @router.get(
     "/builds/by-author-id/{author_id}",
-    response_model_exclude_none=True,
-    summary="Rate Limit 100req/s",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/builds
+    """,
+    deprecated=True,
 )
 def get_builds_by_author_id(
     req: Request,
-    res: Response,
     author_id: int,
     start: int | None = None,
     limit: int | None = 100,
     sort_by: Literal["favorites", "ignores", "reports", "updated_at"] = "favorites",
     sort_direction: Literal["asc", "desc"] = "desc",
     only_latest: bool | None = None,
-) -> list[Build]:
-    only_latest = only_latest or False
-    limiter.apply_limits(
-        req,
-        res,
-        "/v1/builds/by-author-id/{author_id}",
-        [RateLimit(limit=100, period=1)],
+) -> RedirectResponse:
+    url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(
+        author_id=author_id, **req.query_params
     )
-    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_BUILDS}"
-    return load_builds_by_author(author_id, start, limit, sort_by, sort_direction, only_latest)
+    return RedirectResponse(url, status_code=HTTP_301_MOVED_PERMANENTLY)
 
 
 @router.get(
