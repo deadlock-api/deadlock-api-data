@@ -105,7 +105,9 @@ def get_builds(
     only_latest: bool | None = None,
     language: int | None = None,
 ) -> RedirectResponse:
-    url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(**req.query_params)
+    url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(
+        **{k: v for k, v in req.query_params.items() if v is not None}
+    )
     return RedirectResponse(url, status_code=HTTP_301_MOVED_PERMANENTLY)
 
 
@@ -121,7 +123,7 @@ def get_builds(
 )
 def get_build(build_id: int, version: int | None = None) -> RedirectResponse:
     url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(
-        build_id=build_id, version=version
+        **{k: v for k, v in {"build_id": build_id, "version": version}.items() if v is not None}
     )
     return RedirectResponse(url, status_code=HTTP_301_MOVED_PERMANENTLY)
 
@@ -164,7 +166,7 @@ def get_builds_by_hero_id(
     language: int | None = None,
 ) -> RedirectResponse:
     url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(
-        hero_id=hero_id, **req.query_params
+        hero_id=hero_id, **{k: v for k, v in req.query_params.items() if v is not None}
     )
     return RedirectResponse(url, status_code=HTTP_301_MOVED_PERMANENTLY)
 
@@ -189,7 +191,7 @@ def get_builds_by_author_id(
     only_latest: bool | None = None,
 ) -> RedirectResponse:
     url = URL("https://api.deadlock-api.com/v1/builds").include_query_params(
-        author_id=author_id, **req.query_params
+        author_id=author_id, **{k: v for k, v in req.query_params.items() if v is not None}
     )
     return RedirectResponse(url, status_code=HTTP_301_MOVED_PERMANENTLY)
 
