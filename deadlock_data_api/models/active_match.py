@@ -20,6 +20,7 @@ class ActiveMatch(BaseModel):
     lobby_id: int
     net_worth_team_0: int
     net_worth_team_1: int
+    game_mode_version: int
     duration_s: int
     spectators: int
     open_spectator_slots: int
@@ -48,6 +49,7 @@ class ActiveMatch(BaseModel):
             lobby_id=msg.lobby_id,
             net_worth_team_0=msg.net_worth_team_0,
             net_worth_team_1=msg.net_worth_team_1,
+            game_mode_version=msg.game_mode_version,
             duration_s=msg.duration_s,
             spectators=msg.spectators,
             open_spectator_slots=msg.open_spectator_slots,
