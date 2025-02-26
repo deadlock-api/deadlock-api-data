@@ -4,7 +4,6 @@ from fastapi import APIRouter
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
-from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.routers import v1
 
 LOGGER = logging.getLogger(__name__)
@@ -55,5 +54,5 @@ def get_builds_by_hero_id(req: Request, hero_id: int) -> RedirectResponse:
 
 
 @router.get("/active-matches", response_model_exclude_none=True)
-def get_active_matches(req: Request, res: Response) -> list[ActiveMatch]:
+def get_active_matches(req: Request, res: Response) -> RedirectResponse:
     return v1.get_active_matches(req, res)

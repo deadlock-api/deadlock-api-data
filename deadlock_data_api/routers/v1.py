@@ -12,9 +12,6 @@ from starlette.datastructures import URL
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.status import HTTP_301_MOVED_PERMANENTLY
-from valveprotos_py.citadel_gcmessages_client_pb2 import (
-    CMsgClientToGCGetActiveMatchesResponse,
-)
 from valveprotos_py.citadel_gcmessages_common_pb2 import (
     CMsgMatchMetaData,
     CMsgMatchMetaDataContents,
@@ -23,7 +20,6 @@ from valveprotos_py.citadel_gcmessages_common_pb2 import (
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import s3_main_conn
-from deadlock_data_api.models.active_match import ActiveMatch
 from deadlock_data_api.models.leaderboard import Leaderboard
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
@@ -33,7 +29,6 @@ from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
-    fetch_active_matches_raw,
     fetch_metadata,
     get_leaderboard,
     get_match_salts_from_db,
@@ -44,7 +39,7 @@ from deadlock_data_api.routers.v1_utils import (
 )
 from deadlock_data_api.utils import cache_file, get_cached_file, send_webhook_event
 
-CACHE_AGE_ACTIVE_MATCHES = 20
+# CACHE_AGE_ACTIVE_MATCHES = 20
 # CACHE_AGE_BUILDS = 5 * 60
 
 LOGGER = logging.getLogger(__name__)
@@ -198,47 +193,35 @@ def get_builds_by_author_id(
 
 @router.get(
     "/raw-active-matches",
-    response_model_exclude_none=True,
-    summary="Updates every 20s | Rate Limit 100req/s, Shared Rate Limit with /active-matches",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/matches/active/raw
+    """,
+    deprecated=True,
 )
-def get_active_matches_raw(
-    req: Request, res: Response, account_groups: str | None = None
-) -> Response:
-    limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
-    account_groups = utils.validate_account_groups(
-        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
-    )
-    return Response(
-        content=fetch_active_matches_raw(account_groups),
-        media_type="application/octet-stream",
-        headers={"Cache-Control": f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"},
+def get_active_matches_raw() -> RedirectResponse:
+    return RedirectResponse(
+        "https://api.deadlock-api.com/v1/matches/active/raw", HTTP_301_MOVED_PERMANENTLY
     )
 
 
 @router.get(
     "/active-matches",
-    response_model_exclude_none=True,
-    summary="Updates every 20s | Rate Limit 100req/s, Shared Rate Limit with /raw-active-matches",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/matches/active
+    """,
+    deprecated=True,
 )
-def get_active_matches(
-    req: Request, res: Response, account_id: int | None = None, account_groups: str | None = None
-) -> list[ActiveMatch]:
-    limiter.apply_limits(req, res, "/v1/active-matches", [RateLimit(limit=100, period=1)])
-    res.headers["Cache-Control"] = f"public, max-age={CACHE_AGE_ACTIVE_MATCHES}"
-
-    account_id = utils.validate_steam_id_optional(account_id)
-    account_groups = utils.validate_account_groups(
-        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
-    )
-
-    raw_active_matches = fetch_active_matches_raw(account_groups)
-    msg = CMsgClientToGCGetActiveMatchesResponse.FromString(raw_active_matches)
-
-    return [
-        ActiveMatch.from_msg(am)
-        for am in msg.active_matches
-        if account_id is None or any(p.account_id == account_id for p in am.players)
-    ]
+def get_active_matches(account_id: int | None = None) -> RedirectResponse:
+    url = URL("https://api.deadlock-api.com/v1/matches/active")
+    if account_id:
+        url.include_query_params(account_id=account_id)
+    return RedirectResponse(url, HTTP_301_MOVED_PERMANENTLY)
 
 
 @router.get(

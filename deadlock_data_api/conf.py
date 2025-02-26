@@ -131,7 +131,6 @@ class AppConfig:
     hook0: HOOK0Config
     steam_proxy: SteamProxyConfig | None
     steam_api_key: str
-    discord_webhook_url: str | None
     emergency_mode: bool
     enforce_rate_limits: bool
     demo_retention_days: int
@@ -152,7 +151,6 @@ class AppConfig:
             hook0=HOOK0Config.from_env(),
             steam_proxy=SteamProxyConfig.from_env(),
             steam_api_key=os.environ.get("STEAM_API_KEY"),
-            discord_webhook_url=os.environ.get("DISCORD_WEBHOOK_URL"),
             emergency_mode=os.environ.get("EMERGENCY_MODE") == "true",
             enforce_rate_limits=os.environ.get("ENFORCE_RATE_LIMITS") == "true",
             demo_retention_days=int(os.environ.get("DEMO_RETENTION_DAYS", 21)),

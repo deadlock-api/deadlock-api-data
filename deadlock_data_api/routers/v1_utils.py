@@ -3,13 +3,11 @@ from datetime import datetime
 from typing import Literal
 
 import requests
-import snappy
 from cachetools.func import ttl_cache
 from fastapi import HTTPException
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_503_SERVICE_UNAVAILABLE
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
-    CMsgClientToGCGetActiveMatches,
     CMsgClientToGCGetLeaderboard,
     CMsgClientToGCGetLeaderboardResponse,
     CMsgClientToGCGetMatchHistory,
@@ -17,7 +15,6 @@ from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgClientToGCGetMatchMetaData,
     CMsgClientToGCGetMatchMetaDataResponse,
     CMsgClientToGCGetProfileCard,
-    k_EMsgClientToGCGetActiveMatches,
     k_EMsgClientToGCGetLeaderboard,
     k_EMsgClientToGCGetMatchHistory,
     k_EMsgClientToGCGetMatchMetaData,
@@ -41,13 +38,11 @@ from deadlock_data_api.models.player_match_history import (
 )
 from deadlock_data_api.utils import (
     call_steam_proxy,
-    call_steam_proxy_raw,
-    send_webhook_message,
 )
 
-CACHE_AGE_ACTIVE_MATCHES = 20
+# CACHE_AGE_ACTIVE_MATCHES = 20
 # CACHE_AGE_BUILDS = 5 * 60
-LOAD_FILE_RETRIES = 5
+# LOAD_FILE_RETRIES = 5
 
 LOGGER = logging.getLogger(__name__)
 
@@ -340,29 +335,29 @@ def fetch_metadata(match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse)
 #         return Build.model_validate(result[0])
 
 
-@ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
-def fetch_active_matches_raw(account_groups: str | None = None, retries: int = 3) -> bytes:
-    try:
-        attempts = 0
-        while True:
-            attempts += 1
-            try:
-                msg = call_steam_proxy_raw(
-                    k_EMsgClientToGCGetActiveMatches,
-                    CMsgClientToGCGetActiveMatches(),
-                    10,
-                    account_groups.split(",") if account_groups else ["LowRateLimitApis"],
-                )
-                return snappy.decompress(msg[7:])
-            except Exception as e:
-                if attempts >= retries:
-                    raise e
-                msg = f"Failed to fetch active matches: {e.response.status_code if isinstance(e, requests.exceptions.HTTPError) else type(e).__name__}"
-                LOGGER.exception(msg)
-    except Exception as e:
-        msg = f"Failed to fetch active matches: {e.response.status_code if isinstance(e, requests.exceptions.HTTPError) else type(e).__name__}"
-        send_webhook_message(msg)
-        raise HTTPException(status_code=500, detail="Failed to fetch active matches")
+# @ttl_cache(ttl=CACHE_AGE_ACTIVE_MATCHES)
+# def fetch_active_matches_raw(account_groups: str | None = None, retries: int = 3) -> bytes:
+#     try:
+#         attempts = 0
+#         while True:
+#             attempts += 1
+#             try:
+#                 msg = call_steam_proxy_raw(
+#                     k_EMsgClientToGCGetActiveMatches,
+#                     CMsgClientToGCGetActiveMatches(),
+#                     10,
+#                     account_groups.split(",") if account_groups else ["LowRateLimitApis"],
+#                 )
+#                 return snappy.decompress(msg[7:])
+#             except Exception as e:
+#                 if attempts >= retries:
+#                     raise e
+#                 msg = f"Failed to fetch active matches: {e.response.status_code if isinstance(e, requests.exceptions.HTTPError) else type(e).__name__}"
+#                 LOGGER.exception(msg)
+#     except Exception as e:
+#         msg = f"Failed to fetch active matches: {e.response.status_code if isinstance(e, requests.exceptions.HTTPError) else type(e).__name__}"
+#         send_webhook_message(msg)
+#         raise HTTPException(status_code=500, detail="Failed to fetch active matches")
 
 
 # last_patch_notes: str = ""
