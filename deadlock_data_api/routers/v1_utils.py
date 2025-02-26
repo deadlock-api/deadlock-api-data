@@ -91,7 +91,7 @@ def get_match_salts_from_db(
         result = result[0]
         if not need_demo or result[1] != 0:
             return CMsgClientToGCGetMatchMetaDataResponse(
-                metadata_salt=result[0], replay_salt=result[1], cluster_id=result[2]
+                metadata_salt=result[0], replay_salt=result[1], replay_group_id=result[2]
             )
     return None
 
@@ -133,14 +133,14 @@ def get_match_salts_from_steam(
                 "match_id": match_id,
                 "metadata_salt": msg.metadata_salt,
                 "replay_salt": msg.replay_salt,
-                "cluster_id": msg.cluster_id,
+                "cluster_id": msg.replay_group_id,
             },
         )
     return msg
 
 
 def fetch_metadata(match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse) -> bytes:
-    meta_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
+    meta_url = f"http://replay{salts.replay_group_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
     metafile = requests.get(meta_url)
     metafile.raise_for_status()
     metafile = metafile.content

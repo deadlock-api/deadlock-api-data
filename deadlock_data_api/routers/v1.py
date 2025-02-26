@@ -521,13 +521,11 @@ def get_match_salts(
             [RateLimit(limit=60, period=3600)] if not account_groups else [],
         )
         salts = get_match_salts_from_steam(match_id, True, account_groups)
-    metadata_url = f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
-    demo_url = (
-        f"http://replay{salts.cluster_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
-    )
+    metadata_url = f"http://replay{salts.replay_group_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
+    demo_url = f"http://replay{salts.replay_group_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
     return DataUrlsResponse(
         match_id=match_id,
-        cluster_id=salts.cluster_id,
+        cluster_id=salts.replay_group_id,
         metadata_salt=salts.metadata_salt,
         replay_salt=salts.replay_salt,
         metadata_url=metadata_url,
