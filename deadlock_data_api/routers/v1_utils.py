@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime
 
-import requests
 from cachetools.func import ttl_cache
 from fastapi import HTTPException
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_503_SERVICE_UNAVAILABLE
@@ -127,12 +126,12 @@ def get_match_salts_from_steam(
     return msg
 
 
-def fetch_metadata(match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse) -> bytes:
-    meta_url = f"http://replay{salts.replay_group_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
-    metafile = requests.get(meta_url)
-    metafile.raise_for_status()
-    metafile = metafile.content
-    return metafile
+# def fetch_metadata(match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse) -> bytes:
+#     meta_url = f"http://replay{salts.replay_group_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
+#     metafile = requests.get(meta_url)
+#     metafile.raise_for_status()
+#     metafile = metafile.content
+#     return metafile
 
 
 # @ttl_cache(ttl=CACHE_AGE_BUILDS - 1)

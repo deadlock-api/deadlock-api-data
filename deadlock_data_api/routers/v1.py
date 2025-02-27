@@ -1,25 +1,17 @@
-import bz2
 import logging
 from datetime import datetime, timedelta
 from typing import Literal
 
-import botocore.exceptions
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.openapi.models import APIKey
-from google.protobuf.json_format import MessageToDict
 from pydantic import BaseModel
 from starlette.datastructures import URL
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse, Response
+from starlette.responses import RedirectResponse, Response
 from starlette.status import HTTP_301_MOVED_PERMANENTLY
-from valveprotos_py.citadel_gcmessages_common_pb2 import (
-    CMsgMatchMetaData,
-    CMsgMatchMetaDataContents,
-)
 
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.globs import s3_main_conn
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
     PlayerMatchHistoryEntry,
@@ -28,14 +20,13 @@ from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
-    fetch_metadata,
     get_match_salts_from_db,
     get_match_salts_from_steam,
     get_match_start_time,
     get_player_match_history,
     get_player_rank,
 )
-from deadlock_data_api.utils import cache_file, get_cached_file, send_webhook_event
+from deadlock_data_api.utils import send_webhook_event
 
 # CACHE_AGE_ACTIVE_MATCHES = 20
 # CACHE_AGE_BUILDS = 5 * 60
@@ -315,139 +306,54 @@ def get_raw_metadata_file_old(match_id: int):
     return RedirectResponse(url=f"/v1/matches/{match_id}/raw-metadata", status_code=301)
 
 
-def cache_metadata_background(match_id: int, metafile: bytes, upload_to_main: bool = False):
-    if upload_to_main:
-        try:
-            s3_main_conn().put_object(
-                Bucket=CONFIG.s3_main.meta_file_bucket_name,
-                Key=f"ingest/metadata/{match_id}.meta.bz2",
-                Body=metafile,
-            )
-        except Exception:
-            LOGGER.error("Failed to upload metadata to s3")
-    try:
-        cache_file(f"{match_id}.meta.bz2", metafile)
-    except Exception as e:
-        LOGGER.error(f"Failed to cache metadata: {e}")
+# def cache_metadata_background(match_id: int, metafile: bytes, upload_to_main: bool = False):
+#     if upload_to_main:
+#         try:
+#             s3_main_conn().put_object(
+#                 Bucket=CONFIG.s3_main.meta_file_bucket_name,
+#                 Key=f"ingest/metadata/{match_id}.meta.bz2",
+#                 Body=metafile,
+#             )
+#         except Exception:
+#             LOGGER.error("Failed to upload metadata to s3")
+#     try:
+#         cache_file(f"{match_id}.meta.bz2", metafile)
+#     except Exception as e:
+#         LOGGER.error(f"Failed to cache metadata: {e}")
 
 
 @router.get(
     "/matches/{match_id}/raw-metadata",
+    summary="Moved to new API: http://api.deadlock-api.com/",
     description="""
-# Raw Metadata
-
-This endpoints streams the raw .meta.bz2 file for the given `match_id`.
-
-You have to decompress it and decode the protobuf message.
-
-Protobuf definitions can be found here: [https://github.com/SteamDatabase/Protobufs](https://github.com/SteamDatabase/Protobufs)
-
-Relevant Protobuf Messages: CMsgMatchMetaData, CMsgMatchMetaDataContents
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/matches/{match_id}/metadata/raw,
     """,
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 60req/h, Shared Rate Limit with /metadata",
+    deprecated=True,
 )
-def get_raw_metadata_file(
-    req: Request,
-    res: Response,
-    background_tasks: BackgroundTasks,
-    match_id: int,
-    account_groups: str | None = None,
-) -> Response:
-    limiter.apply_limits(
-        req,
-        res,
-        "/v1/matches/{match_id}/metadata",
-        [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
-        [RateLimit(limit=100, period=1)],
-    )
-    account_groups = utils.validate_account_groups(
-        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
-    )
-    try:
-        meta = get_cached_file(f"{match_id}.meta.bz2")
-        if meta is None:
-            meta = get_cached_file(f"{match_id}.meta_hltv.bz2")
-        if meta is not None:
-            return Response(
-                content=meta,
-                media_type="application/octet-stream",
-                headers={
-                    "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
-                    "Cache-Control": "public, max-age=1200",
-                },
-            )
-    except Exception as e:
-        LOGGER.warning(f"Failed to get metadata from cache: {e}")
-
-    possible_keys = [
-        f"processed/metadata/{match_id}.meta.bz2",
-        f"processed/metadata/{match_id}.meta_hltv.bz2",
-    ]
-    key = None
-    for test_key in possible_keys:
-        try:
-            s3_main_conn().head_object(Bucket=CONFIG.s3_main.meta_file_bucket_name, Key=test_key)
-            key = test_key
-        except Exception:
-            pass
-    if key is not None:
-        try:
-            obj = s3_main_conn().get_object(Bucket=CONFIG.s3_main.meta_file_bucket_name, Key=key)
-            body = obj["Body"].read()
-        except botocore.exceptions.ClientError:
-            LOGGER.error("Failed to get metadata from S3")
-            raise HTTPException(status_code=500, detail="Failed to get metadata from S3")
-        background_tasks.add_task(cache_metadata_background, match_id, body)
-        return Response(
-            content=body,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
-                "Cache-Control": "public, max-age=1200",
-            },
-        )
-    salts = get_match_salts_from_db(match_id)
-    if salts is None:
-        limiter.apply_limits(
-            req,
-            res,
-            "/v1/matches/{match_id}/#steam",
-            [RateLimit(limit=60, period=3600)],
-            [RateLimit(limit=60, period=3600)],
-            [RateLimit(limit=60, period=3600)] if not account_groups else [],
-        )
-        salts = get_match_salts_from_steam(match_id, account_groups=account_groups)
-    metafile = fetch_metadata(match_id, salts)
-    background_tasks.add_task(cache_metadata_background, match_id, metafile, True)
-    return Response(
-        content=metafile,
-        media_type="application/octet-stream",
-        headers={
-            "Content-Disposition": f"attachment; filename={match_id}.meta.bz2",
-            "Cache-Control": "public, max-age=1200",
-        },
+def get_raw_metadata_file(match_id: int) -> RedirectResponse:
+    return RedirectResponse(
+        f"https://api.deadlock-api.com/v1/matches/{match_id}/metadata/raw",
+        HTTP_301_MOVED_PERMANENTLY,
     )
 
 
 @router.get(
     "/matches/{match_id}/metadata",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 60req/h, Shared Rate Limit with /raw-metadata",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/matches/{match_id}/metadata,
+    """,
+    deprecated=True,
 )
-async def get_metadata(
-    req: Request,
-    res: Response,
-    background_tasks: BackgroundTasks,
-    match_id: int,
-    account_groups: str | None = None,
-) -> JSONResponse:
-    account_groups = utils.validate_account_groups(
-        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
+async def get_metadata(match_id: int) -> RedirectResponse:
+    return RedirectResponse(
+        f"https://api.deadlock-api.com/v1/matches/{match_id}/metadata",
+        HTTP_301_MOVED_PERMANENTLY,
     )
-    raw_metadata = get_raw_metadata_file(req, res, background_tasks, match_id, account_groups).body
-    raw_metadata_decompressed = bz2.decompress(raw_metadata)
-    metadata = CMsgMatchMetaData.FromString(raw_metadata_decompressed)
-    match_contents = CMsgMatchMetaDataContents.FromString(metadata.match_details)
-    return JSONResponse(MessageToDict(match_contents, preserving_proto_field_name=True))
 
 
 @router.get(

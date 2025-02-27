@@ -36,8 +36,6 @@ logging.config.dictConfig(
         "root": {"level": "DEBUG", "handlers": ["console"], "propagate": True},
     }
 )
-logging.getLogger("boto3").setLevel(logging.WARNING)
-logging.getLogger("botocore").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("clickhouse_driver").setLevel(logging.WARNING)
 

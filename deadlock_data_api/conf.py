@@ -71,25 +71,25 @@ class KafkaConfig:
         )
 
 
-@dataclass
-class S3Config:
-    region_name: str | None
-    endpoint_url: str | None
-    aws_access_key_id: str | None
-    aws_secret_access_key: str | None
-
-    meta_file_bucket_name: str
-    """The bucket which contains .meta.bz2 files"""
-
-    @classmethod
-    def from_env(cls, s3_name: str) -> "S3Config":
-        return cls(
-            region_name=os.environ.get(f"S3_{s3_name}_REGION"),
-            endpoint_url=os.environ.get(f"S3_{s3_name}_ENDPOINT_URL_WITH_PROTOCOL"),
-            aws_access_key_id=os.environ.get(f"S3_{s3_name}_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get(f"S3_{s3_name}_SECRET_ACCESS_KEY"),
-            meta_file_bucket_name=os.environ.get(f"S3_{s3_name}_BUCKET_NAME", "hexe"),
-        )
+# @dataclass
+# class S3Config:
+#     region_name: str | None
+#     endpoint_url: str | None
+#     aws_access_key_id: str | None
+#     aws_secret_access_key: str | None
+#
+#     meta_file_bucket_name: str
+#     """The bucket which contains .meta.bz2 files"""
+#
+#     @classmethod
+#     def from_env(cls, s3_name: str) -> "S3Config":
+#         return cls(
+#             region_name=os.environ.get(f"S3_{s3_name}_REGION"),
+#             endpoint_url=os.environ.get(f"S3_{s3_name}_ENDPOINT_URL_WITH_PROTOCOL"),
+#             aws_access_key_id=os.environ.get(f"S3_{s3_name}_ACCESS_KEY_ID"),
+#             aws_secret_access_key=os.environ.get(f"S3_{s3_name}_SECRET_ACCESS_KEY"),
+#             meta_file_bucket_name=os.environ.get(f"S3_{s3_name}_BUCKET_NAME", "hexe"),
+#         )
 
 
 @dataclass
@@ -125,8 +125,8 @@ class AppConfig:
     clickhouse: ClickhouseConfig
     redis: RedisConfig
     postgres: PostgresConfig
-    s3_main: S3Config
-    s3_cache: S3Config
+    # s3_main: S3Config
+    # s3_cache: S3Config
     kafka: KafkaConfig
     hook0: HOOK0Config
     steam_proxy: SteamProxyConfig | None
@@ -145,8 +145,8 @@ class AppConfig:
             clickhouse=ClickhouseConfig.from_env(),
             redis=RedisConfig.from_env(),
             postgres=PostgresConfig.from_env(),
-            s3_main=S3Config.from_env("MAIN"),
-            s3_cache=S3Config.from_env("CACHE"),
+            # s3_main=S3Config.from_env("MAIN"),
+            # s3_cache=S3Config.from_env("CACHE"),
             kafka=KafkaConfig.from_env(),
             hook0=HOOK0Config.from_env(),
             steam_proxy=SteamProxyConfig.from_env(),
