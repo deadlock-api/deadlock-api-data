@@ -1,17 +1,14 @@
 import logging
-from datetime import datetime, timedelta
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.openapi.models import APIKey
-from pydantic import BaseModel
 from starlette.datastructures import URL
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from starlette.status import HTTP_301_MOVED_PERMANENTLY
 
 from deadlock_data_api import utils
-from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
     PlayerMatchHistoryEntry,
@@ -20,9 +17,6 @@ from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
-    get_match_salts_from_db,
-    get_match_salts_from_steam,
-    get_match_start_time,
     get_player_match_history,
     get_player_rank,
 )
@@ -358,71 +352,35 @@ async def get_metadata(match_id: int) -> RedirectResponse:
 
 @router.get(
     "/matches/{match_id}/demo-url",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 60req/h",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/matches/{match_id}/salts,
+    """,
     deprecated=True,
 )
 def get_demo_url(match_id: int) -> RedirectResponse:
-    return RedirectResponse(url=f"/v1/matches/{match_id}/salts?needs_demo=true", status_code=308)
-
-
-class DataUrlsResponse(BaseModel):
-    match_id: int
-    cluster_id: int
-    metadata_salt: int
-    replay_salt: int
-    metadata_url: str
-    demo_url: str
+    url = URL(f"https://api.deadlock-api.com/v1/matches/{match_id}/salts")
+    url.include_query_params(needs_demo=True)
+    return RedirectResponse(url, HTTP_301_MOVED_PERMANENTLY)
 
 
 @router.get(
     "/matches/{match_id}/salts",
-    summary="RateLimit: 10req/min & 100req/h, API-Key RateLimit: 100req/s, for Steam Calls: Global 60req/h",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/matches/{match_id}/salts,
+    """,
+    deprecated=True,
 )
-def get_match_salts(
-    req: Request,
-    res: Response,
-    match_id: int,
-    needs_demo: bool = False,
-    account_groups: str | None = None,
-) -> DataUrlsResponse:
-    limiter.apply_limits(
-        req,
-        res,
-        "/v1/matches/{match_id}/salts",
-        [RateLimit(limit=10, period=60), RateLimit(limit=100, period=3600)],
-        [RateLimit(limit=100, period=1)],
-    )
-    account_groups = utils.validate_account_groups(
-        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
-    )
-    salts = get_match_salts_from_db(match_id, needs_demo)
-    if salts is None:
-        match_start_time = get_match_start_time(match_id)
-        if (
-            needs_demo
-            and match_start_time is not None
-            and datetime.now() - match_start_time > timedelta(days=CONFIG.demo_retention_days)
-        ):
-            raise HTTPException(status_code=400, detail="Match is too old")
-        limiter.apply_limits(
-            req,
-            res,
-            "/v1/matches/{match_id}/#steam",
-            [RateLimit(limit=60, period=3600)],
-            [RateLimit(limit=60, period=3600)],
-            [RateLimit(limit=60, period=3600)] if not account_groups else [],
-        )
-        salts = get_match_salts_from_steam(match_id, True, account_groups)
-    metadata_url = f"http://replay{salts.replay_group_id}.valve.net/1422450/{match_id}_{salts.metadata_salt}.meta.bz2"
-    demo_url = f"http://replay{salts.replay_group_id}.valve.net/1422450/{match_id}_{salts.replay_salt}.dem.bz2"
-    return DataUrlsResponse(
-        match_id=match_id,
-        cluster_id=salts.replay_group_id,
-        metadata_salt=salts.metadata_salt,
-        replay_salt=salts.replay_salt,
-        metadata_url=metadata_url,
-        demo_url=demo_url,
-    )
+def get_match_salts(match_id: int, needs_demo: bool = False) -> RedirectResponse:
+    url = URL(f"https://api.deadlock-api.com/v1/matches/{match_id}/salts")
+    if needs_demo:
+        url.include_query_params(needs_demo=needs_demo)
+    return RedirectResponse(url, HTTP_301_MOVED_PERMANENTLY)
 
 
 @router.post("/matches/{match_id}/ingest", tags=["Webhooks"], include_in_schema=False)

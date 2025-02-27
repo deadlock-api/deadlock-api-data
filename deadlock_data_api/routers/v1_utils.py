@@ -1,18 +1,13 @@
 import logging
-from datetime import datetime
 
-from cachetools.func import ttl_cache
 from fastapi import HTTPException
-from starlette.status import HTTP_404_NOT_FOUND, HTTP_503_SERVICE_UNAVAILABLE
+from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
     CMsgClientToGCGetMatchHistory,
     CMsgClientToGCGetMatchHistoryResponse,
-    CMsgClientToGCGetMatchMetaData,
-    CMsgClientToGCGetMatchMetaDataResponse,
     CMsgClientToGCGetProfileCard,
     k_EMsgClientToGCGetMatchHistory,
-    k_EMsgClientToGCGetMatchMetaData,
     k_EMsgClientToGCGetProfileCard,
 )
 
@@ -23,9 +18,7 @@ from deadlock_data_api.models.player_match_history import (
     PlayerMatchHistory,
     PlayerMatchHistoryEntry,
 )
-from deadlock_data_api.utils import (
-    call_steam_proxy,
-)
+from deadlock_data_api.utils import call_steam_proxy
 
 # CACHE_AGE_ACTIVE_MATCHES = 20
 # CACHE_AGE_BUILDS = 5 * 60
@@ -65,65 +58,65 @@ def get_player_match_history(
     return PlayerMatchHistory(cursor=msg.continue_cursor, matches=match_history)
 
 
-@ttl_cache(ttl=60 * 60)
-def get_match_salts_from_db(
-    match_id: int, need_demo: bool = False
-) -> CMsgClientToGCGetMatchMetaDataResponse | None:
-    with CH_POOL.get_client() as client:
-        result = client.execute(
-            "SELECT metadata_salt, replay_salt, cluster_id FROM match_salts WHERE match_id = %(match_id)s",
-            {"match_id": match_id},
-        )
-    if result:
-        result = result[0]
-        if not need_demo or result[1] != 0:
-            return CMsgClientToGCGetMatchMetaDataResponse(
-                metadata_salt=result[0], replay_salt=result[1], replay_group_id=result[2]
-            )
-    return None
-
-
-@ttl_cache(ttl=60 * 60)
-def get_match_start_time(match_id: int) -> datetime | None:
-    with CH_POOL.get_client() as client:
-        result = client.execute(
-            "SELECT start_time FROM match_info WHERE match_id <= %(match_id)s ORDER BY match_id DESC LIMIT 1",
-            {"match_id": match_id},
-        )
-    return result[0][0] if result else None
-
-
-def get_match_salts_from_steam(
-    match_id: int, need_demo: bool = False, account_groups: str | None = None
-) -> CMsgClientToGCGetMatchMetaDataResponse:
-    if CONFIG.deactivate_match_metadata and account_groups is None:
-        raise HTTPException(
-            status_code=HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Calls to Steam API are currently unavailable",
-        )
-    msg = CMsgClientToGCGetMatchMetaData()
-    msg.match_id = match_id
-    msg = call_steam_proxy(
-        k_EMsgClientToGCGetMatchMetaData,
-        msg,
-        CMsgClientToGCGetMatchMetaDataResponse,
-        576_000 if not account_groups else 1,  # 25 per 4 hours
-        account_groups.split(",") if account_groups else ["GetMatchMetaData"],
-        3600,
-    )
-    if msg.metadata_salt == 0 or (need_demo and msg.replay_salt == 0):
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Match not found")
-    with CH_POOL.get_client() as client:
-        client.execute(
-            "INSERT INTO match_salts (match_id, metadata_salt, replay_salt, cluster_id) VALUES (%(match_id)s, %(metadata_salt)s, %(replay_salt)s, %(cluster_id)s)",
-            {
-                "match_id": match_id,
-                "metadata_salt": msg.metadata_salt,
-                "replay_salt": msg.replay_salt,
-                "cluster_id": msg.replay_group_id,
-            },
-        )
-    return msg
+# @ttl_cache(ttl=60 * 60)
+# def get_match_salts_from_db(
+#     match_id: int, need_demo: bool = False
+# ) -> CMsgClientToGCGetMatchMetaDataResponse | None:
+#     with CH_POOL.get_client() as client:
+#         result = client.execute(
+#             "SELECT metadata_salt, replay_salt, cluster_id FROM match_salts WHERE match_id = %(match_id)s",
+#             {"match_id": match_id},
+#         )
+#     if result:
+#         result = result[0]
+#         if not need_demo or result[1] != 0:
+#             return CMsgClientToGCGetMatchMetaDataResponse(
+#                 metadata_salt=result[0], replay_salt=result[1], replay_group_id=result[2]
+#             )
+#     return None
+#
+#
+# @ttl_cache(ttl=60 * 60)
+# def get_match_start_time(match_id: int) -> datetime | None:
+#     with CH_POOL.get_client() as client:
+#         result = client.execute(
+#             "SELECT start_time FROM match_info WHERE match_id <= %(match_id)s ORDER BY match_id DESC LIMIT 1",
+#             {"match_id": match_id},
+#         )
+#     return result[0][0] if result else None
+#
+#
+# def get_match_salts_from_steam(
+#     match_id: int, need_demo: bool = False, account_groups: str | None = None
+# ) -> CMsgClientToGCGetMatchMetaDataResponse:
+#     if CONFIG.deactivate_match_metadata and account_groups is None:
+#         raise HTTPException(
+#             status_code=HTTP_503_SERVICE_UNAVAILABLE,
+#             detail="Calls to Steam API are currently unavailable",
+#         )
+#     msg = CMsgClientToGCGetMatchMetaData()
+#     msg.match_id = match_id
+#     msg = call_steam_proxy(
+#         k_EMsgClientToGCGetMatchMetaData,
+#         msg,
+#         CMsgClientToGCGetMatchMetaDataResponse,
+#         576_000 if not account_groups else 1,  # 25 per 4 hours
+#         account_groups.split(",") if account_groups else ["GetMatchMetaData"],
+#         3600,
+#     )
+#     if msg.metadata_salt == 0 or (need_demo and msg.replay_salt == 0):
+#         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Match not found")
+#     with CH_POOL.get_client() as client:
+#         client.execute(
+#             "INSERT INTO match_salts (match_id, metadata_salt, replay_salt, cluster_id) VALUES (%(match_id)s, %(metadata_salt)s, %(replay_salt)s, %(cluster_id)s)",
+#             {
+#                 "match_id": match_id,
+#                 "metadata_salt": msg.metadata_salt,
+#                 "replay_salt": msg.replay_salt,
+#                 "cluster_id": msg.replay_group_id,
+#             },
+#         )
+#     return msg
 
 
 # def fetch_metadata(match_id: int, salts: CMsgClientToGCGetMatchMetaDataResponse) -> bytes:

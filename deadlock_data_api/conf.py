@@ -133,10 +133,10 @@ class AppConfig:
     steam_api_key: str
     emergency_mode: bool
     enforce_rate_limits: bool
-    demo_retention_days: int
+    # demo_retention_days: int
     sentry_dsn: str | None
     deactivate_match_history: bool = False
-    deactivate_match_metadata: bool = False
+    # deactivate_match_metadata: bool = False
     deactivate_live_endpoints: bool = False
 
     @classmethod
@@ -153,10 +153,10 @@ class AppConfig:
             steam_api_key=os.environ.get("STEAM_API_KEY"),
             emergency_mode=os.environ.get("EMERGENCY_MODE") == "true",
             enforce_rate_limits=os.environ.get("ENFORCE_RATE_LIMITS") == "true",
-            demo_retention_days=int(os.environ.get("DEMO_RETENTION_DAYS", 21)),
+            # demo_retention_days=int(os.environ.get("DEMO_RETENTION_DAYS", 21)),
             sentry_dsn=os.environ.get("SENTRY_DSN"),
             deactivate_match_history=os.environ.get("DEACTIVATE_MATCH_HISTORY") == "true",
-            deactivate_match_metadata=os.environ.get("DEACTIVATE_MATCH_METADATA") == "true",
+            # deactivate_match_metadata=os.environ.get("DEACTIVATE_MATCH_METADATA") == "true",
             deactivate_live_endpoints=os.environ.get("DEACTIVATE_LIVE_ENDPOINTS") == "true",
         )
 
