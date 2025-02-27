@@ -20,7 +20,6 @@ from valveprotos_py.citadel_gcmessages_common_pb2 import (
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import s3_main_conn
-from deadlock_data_api.models.leaderboard import Leaderboard
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
     PlayerMatchHistoryEntry,
@@ -30,7 +29,6 @@ from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
 from deadlock_data_api.routers.v1_utils import (
     fetch_metadata,
-    get_leaderboard,
     get_match_salts_from_db,
     get_match_salts_from_steam,
     get_match_start_time,
@@ -252,51 +250,39 @@ def player_rank(
 
 @router.get(
     "/leaderboard/{region}",
-    response_model_exclude_none=True,
-    summary="Rate Limit 100req/s",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/leaderboard/{region},
+    """,
+    deprecated=True,
 )
 def leaderboard(
-    req: Request,
-    res: Response,
     region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
-    account_groups: str = None,
-) -> Leaderboard:
-    limiter.apply_limits(
-        req,
-        res,
-        "/v1/leaderboard/{region}",
-        [RateLimit(limit=100, period=1)],
+) -> RedirectResponse:
+    return RedirectResponse(
+        f"https://api.deadlock-api.com/v1/leaderboard/{region}", HTTP_301_MOVED_PERMANENTLY
     )
-    res.headers["Cache-Control"] = "public, max-age=900"
-    account_groups = utils.validate_account_groups(
-        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
-    )
-    return get_leaderboard(region, None, account_groups)
 
 
 @router.get(
     "/leaderboard/{region}/{hero_id}",
-    response_model_exclude_none=True,
-    summary="Rate Limit 100req/s",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: http://api.deadlock-api.com/v1/leaderboard/{region}/{hero_id},
+    """,
+    deprecated=True,
 )
 def hero_leaderboard(
-    req: Request,
-    res: Response,
-    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
-    hero_id: int,
-    account_groups: str = None,
-) -> Leaderboard:
-    limiter.apply_limits(
-        req,
-        res,
-        "/v1/leaderboard/{region}/{hero_id}",
-        [RateLimit(limit=100, period=1)],
+    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"], hero_id: int
+) -> RedirectResponse:
+    return RedirectResponse(
+        f"https://api.deadlock-api.com/v1/leaderboard/{region}/{hero_id}",
+        HTTP_301_MOVED_PERMANENTLY,
     )
-    res.headers["Cache-Control"] = "public, max-age=900"
-    account_groups = utils.validate_account_groups(
-        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
-    )
-    return get_leaderboard(region, hero_id, account_groups)
 
 
 @router.get(

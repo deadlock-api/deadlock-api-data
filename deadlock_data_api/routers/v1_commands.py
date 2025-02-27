@@ -20,10 +20,8 @@ from starlette.responses import PlainTextResponse, Response
 
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.models.leaderboard import Leaderboard, LeaderboardEntry
 from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
 from deadlock_data_api.routers import v2
-from deadlock_data_api.routers.v1_utils import get_leaderboard
 
 LOGGER = logging.getLogger(__name__)
 
@@ -47,8 +45,8 @@ def get_leaderboard_rank_command(
     res.headers["Cache-Control"] = "public, max-age=60"
     try:
         leaderboard_entry = get_leaderboard_entry(region, account_name)
-        rank_name = get_rank_name(leaderboard_entry.badge_level)
-        return f"{leaderboard_entry.account_name} is {rank_name} | #{leaderboard_entry.rank}"
+        rank_name = get_rank_name(leaderboard_entry["badge_level"])
+        return f"{leaderboard_entry['account_name']} is {rank_name} | #{leaderboard_entry['rank']}"
     except CommandResolveError as e:
         return str(e)
     except Exception:
@@ -73,7 +71,7 @@ def get_hero_leaderboard_rank_command(
         response = requests.get(f"https://assets.deadlock-api.com/v2/heroes/{hero_id}").json()
         hero_name = response.get("name")
         leaderboard_entry = get_leaderboard_entry(region, account_name, hero_id)
-        return f"#{leaderboard_entry.rank} with {hero_name}"
+        return f"#{leaderboard_entry['rank']} with {hero_name}"
     except CommandResolveError as e:
         return str(e)
     except Exception:
@@ -134,10 +132,13 @@ class CommandResolveError(Exception):
 
 @ttl_cache(ttl=60)
 @retry(tries=3)
-def get_leaderboard_with_retry_cached(
-    region: RegionType, hero_id: int | None = None
-) -> Leaderboard:
-    return get_leaderboard(region, hero_id)
+def get_leaderboard_with_retry_cached(region: RegionType, hero_id: int | None = None) -> dict:
+    if hero_id:
+        return requests.get(
+            f"https://api.deadlock-api.com/v1/leaderboard/{region}/{hero_id}"
+        ).json()
+    else:
+        return requests.get(f"https://api.deadlock-api.com/v1/leaderboard/{region}").json()
 
 
 @ttl_cache(ttl=60)
@@ -197,10 +198,10 @@ def get_rank_img(rank: int) -> str:
 
 def get_leaderboard_entry(
     region: RegionType, account_name: str, hero_id: int | None = None
-) -> LeaderboardEntry:
-    leaderboard = get_leaderboard_with_retry_cached(region, hero_id)
-    for entry in leaderboard.entries:
-        if entry.account_name == account_name:
+) -> dict:
+    leaderboard = get_leaderboard_with_retry_cached(region, hero_id).get("entries", [])
+    for entry in leaderboard:
+        if entry["account_name"] == account_name:
             return entry
     raise CommandResolveError("Player not found in leaderboard")
 
@@ -268,7 +269,7 @@ class CommandVariable:
         """Get the leaderboard rank"""
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
-        return get_rank_name(leaderboard_entry.badge_level)
+        return get_rank_name(leaderboard_entry["badge_level"])
 
     def leaderboard_rank_badge_level(
         self, region: RegionType, account_id: int, *args, **kwargs
@@ -276,19 +277,19 @@ class CommandVariable:
         """Get the leaderboard rank badge level"""
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
-        return str(leaderboard_entry.badge_level)
+        return str(leaderboard_entry["badge_level"])
 
     def leaderboard_rank_img(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
         """Get the leaderboard rank"""
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
-        return get_rank_img(leaderboard_entry.badge_level)
+        return get_rank_img(leaderboard_entry["badge_level"])
 
     def leaderboard_place(self, region: RegionType, account_id: int, *args, **kwargs) -> str:
         """Get the leaderboard place"""
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name)
-        return f"#{leaderboard_entry.rank}"
+        return f"#{leaderboard_entry['rank']}"
 
     def hero_leaderboard_place(
         self, region: RegionType, account_id: int, hero_name: str, *args, **kwargs
@@ -300,7 +301,7 @@ class CommandVariable:
             hero_id = None
         account_name = get_account_name_with_retry_cached(account_id)
         leaderboard_entry = get_leaderboard_entry(region, account_name, hero_id)
-        return f"#{leaderboard_entry.rank}"
+        return f"#{leaderboard_entry['rank']}"
 
     def wins_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of wins today"""

@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from typing import Literal
 
 import requests
 from cachetools.func import ttl_cache
@@ -8,29 +7,18 @@ from fastapi import HTTPException
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_503_SERVICE_UNAVAILABLE
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
-    CMsgClientToGCGetLeaderboard,
-    CMsgClientToGCGetLeaderboardResponse,
     CMsgClientToGCGetMatchHistory,
     CMsgClientToGCGetMatchHistoryResponse,
     CMsgClientToGCGetMatchMetaData,
     CMsgClientToGCGetMatchMetaDataResponse,
     CMsgClientToGCGetProfileCard,
-    k_EMsgClientToGCGetLeaderboard,
     k_EMsgClientToGCGetMatchHistory,
     k_EMsgClientToGCGetMatchMetaData,
     k_EMsgClientToGCGetProfileCard,
 )
-from valveprotos_py.citadel_gcmessages_common_pb2 import (
-    k_ECitadelLeaderboardRegion_Asia,
-    k_ECitadelLeaderboardRegion_Europe,
-    k_ECitadelLeaderboardRegion_NAmerica,
-    k_ECitadelLeaderboardRegion_Oceania,
-    k_ECitadelLeaderboardRegion_SAmerica,
-)
 
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import CH_POOL
-from deadlock_data_api.models.leaderboard import Leaderboard
 from deadlock_data_api.models.player_card import PlayerCard
 from deadlock_data_api.models.player_match_history import (
     PlayerMatchHistory,
@@ -396,31 +384,31 @@ def get_player_rank(account_id: int, account_groups: str | None = None) -> Playe
     return player_card
 
 
-def get_leaderboard(
-    region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
-    hero_id: int | None = None,
-    account_groups: str | None = None,
-) -> Leaderboard:
-    msg = CMsgClientToGCGetLeaderboard()
-    if hero_id is not None:
-        msg.hero_id = hero_id
-    match region:
-        case "Europe":
-            msg.leaderboard_region = k_ECitadelLeaderboardRegion_Europe
-        case "Asia":
-            msg.leaderboard_region = k_ECitadelLeaderboardRegion_Asia
-        case "NAmerica":
-            msg.leaderboard_region = k_ECitadelLeaderboardRegion_NAmerica
-        case "SAmerica":
-            msg.leaderboard_region = k_ECitadelLeaderboardRegion_SAmerica
-        case "Oceania":
-            msg.leaderboard_region = k_ECitadelLeaderboardRegion_Oceania
-    msg = call_steam_proxy(
-        k_EMsgClientToGCGetLeaderboard,
-        msg,
-        CMsgClientToGCGetLeaderboardResponse,
-        60 * 1000,
-        account_groups.split(",") if account_groups else ["LowRateLimitApis"],
-        60,
-    )
-    return Leaderboard.from_msg(msg)
+# def get_leaderboard(
+#     region: Literal["Europe", "Asia", "NAmerica", "SAmerica", "Oceania"],
+#     hero_id: int | None = None,
+#     account_groups: str | None = None,
+# ) -> Leaderboard:
+#     msg = CMsgClientToGCGetLeaderboard()
+#     if hero_id is not None:
+#         msg.hero_id = hero_id
+#     match region:
+#         case "Europe":
+#             msg.leaderboard_region = k_ECitadelLeaderboardRegion_Europe
+#         case "Asia":
+#             msg.leaderboard_region = k_ECitadelLeaderboardRegion_Asia
+#         case "NAmerica":
+#             msg.leaderboard_region = k_ECitadelLeaderboardRegion_NAmerica
+#         case "SAmerica":
+#             msg.leaderboard_region = k_ECitadelLeaderboardRegion_SAmerica
+#         case "Oceania":
+#             msg.leaderboard_region = k_ECitadelLeaderboardRegion_Oceania
+#     msg = call_steam_proxy(
+#         k_EMsgClientToGCGetLeaderboard,
+#         msg,
+#         CMsgClientToGCGetLeaderboardResponse,
+#         60 * 1000,
+#         account_groups.split(",") if account_groups else ["LowRateLimitApis"],
+#         60,
+#     )
+#     return Leaderboard.from_msg(msg)
