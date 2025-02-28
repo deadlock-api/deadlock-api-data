@@ -1,17 +1,15 @@
 import psycopg2
-import redis
-from clickhouse_pool import ChPool
 
 from deadlock_data_api.conf import CONFIG
 
-CH_POOL = ChPool(
-    host=CONFIG.clickhouse.host,
-    port=CONFIG.clickhouse.port,
-    user=CONFIG.clickhouse.user,
-    password=CONFIG.clickhouse.password,
-    database=CONFIG.clickhouse.database_name,
-    connections_max=600,
-)
+# CH_POOL = ChPool(
+#     host=CONFIG.clickhouse.host,
+#     port=CONFIG.clickhouse.port,
+#     user=CONFIG.clickhouse.user,
+#     password=CONFIG.clickhouse.password,
+#     database=CONFIG.clickhouse.database_name,
+#     connections_max=600,
+# )
 
 
 # def s3_main_conn():
@@ -36,14 +34,14 @@ CH_POOL = ChPool(
 #     )
 
 
-def redis_conn(decode_responses: bool = True):
-    return redis.Redis(
-        host=CONFIG.redis.host,
-        port=CONFIG.redis.port,
-        password=CONFIG.redis.password,
-        db=0,
-        decode_responses=decode_responses,
-    )
+# def redis_conn(decode_responses: bool = True):
+#     return redis.Redis(
+#         host=CONFIG.redis.host,
+#         port=CONFIG.redis.port,
+#         password=CONFIG.redis.password,
+#         db=0,
+#         decode_responses=decode_responses,
+#     )
 
 
 def postgres_conn():

@@ -1,13 +1,3 @@
-from valveprotos_py.citadel_gcmessages_client_pb2 import (
-    CMsgCitadelProfileCard,
-    CMsgClientToGCGetProfileCard,
-    k_EMsgClientToGCGetProfileCard,
-)
-
-from deadlock_data_api.globs import CH_POOL
-from deadlock_data_api.models.player_card import PlayerCard
-from deadlock_data_api.utils import call_steam_proxy
-
 # CACHE_AGE_ACTIVE_MATCHES = 20
 # CACHE_AGE_BUILDS = 5 * 60
 # LOAD_FILE_RETRIES = 5
@@ -347,21 +337,21 @@ from deadlock_data_api.utils import call_steam_proxy
 #     return [PatchNote.model_validate(item) for item in items]
 
 
-def get_player_rank(account_id: int, account_groups: str | None = None) -> PlayerCard:
-    msg = CMsgClientToGCGetProfileCard()
-    msg.account_id = account_id
-    msg = call_steam_proxy(
-        k_EMsgClientToGCGetProfileCard,
-        msg,
-        CMsgCitadelProfileCard,
-        10,
-        account_groups.split(",") if account_groups else ["LowRateLimitApis"],
-        900,
-    )
-    player_card = PlayerCard.from_msg(msg)
-    with CH_POOL.get_client() as client:
-        player_card.store_clickhouse(client, account_id)
-    return player_card
+# def get_player_rank(account_id: int, account_groups: str | None = None) -> PlayerCard:
+#     msg = CMsgClientToGCGetProfileCard()
+#     msg.account_id = account_id
+#     msg = call_steam_proxy(
+#         k_EMsgClientToGCGetProfileCard,
+#         msg,
+#         CMsgCitadelProfileCard,
+#         10,
+#         account_groups.split(",") if account_groups else ["LowRateLimitApis"],
+#         900,
+#     )
+#     player_card = PlayerCard.from_msg(msg)
+#     with CH_POOL.get_client() as client:
+#         player_card.store_clickhouse(client, account_id)
+#     return player_card
 
 
 # def get_leaderboard(

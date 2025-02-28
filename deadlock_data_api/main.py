@@ -37,7 +37,6 @@ logging.config.dictConfig(
     }
 )
 logging.getLogger("urllib3").setLevel(logging.WARNING)
-logging.getLogger("clickhouse_driver").setLevel(logging.WARNING)
 
 LOGGER = logging.getLogger(__name__)
 

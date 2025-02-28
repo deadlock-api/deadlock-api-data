@@ -1,28 +1,22 @@
-import logging
 import uuid
-from base64 import b64decode, b64encode
 from datetime import datetime
-from typing import TypeVar
 
 import requests
 from cachetools.func import ttl_cache
 from fastapi import HTTPException, Security
 from fastapi.openapi.models import APIKey, APIKeyIn
 from fastapi.security.api_key import APIKeyBase
-from google.protobuf.message import Message
-from requests import HTTPError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.status import (
     HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.globs import postgres_conn, redis_conn
+from deadlock_data_api.globs import postgres_conn
 
-LOGGER = logging.getLogger(__name__)
+# LOGGER = logging.getLogger(__name__)
 
 STEAM_ID_64_IDENT = 76561197960265728
 
@@ -43,81 +37,81 @@ STEAM_ID_64_IDENT = 76561197960265728
 #     last_discord_msg_timestamp = datetime.now()
 
 
-def is_valid_uuid(value: str | None) -> bool:
-    if value is None:
-        return False
-    try:
-        uuid.UUID(value)
-        return True
-    except ValueError:
-        LOGGER.warning(f"Invalid UUID: {value}")
-        return False
-    except TypeError:
-        LOGGER.warning(f"Invalid UUID: {value}")
-        return False
+# def is_valid_uuid(value: str | None) -> bool:
+#     if value is None:
+#         return False
+#     try:
+#         uuid.UUID(value)
+#         return True
+#     except ValueError:
+#         LOGGER.warning(f"Invalid UUID: {value}")
+#         return False
+#     except TypeError:
+#         LOGGER.warning(f"Invalid UUID: {value}")
+#         return False
 
 
-R = TypeVar("R", bound=Message)
+# R = TypeVar("R", bound=Message)
 
 
-def call_steam_proxy(
-    msg_type: int,
-    msg: Message,
-    response_type: type[R],
-    cooldown_time: int,
-    groups: list[str],
-    cache_time: int | None = None,
-) -> R:
-    try:
-        cache_key = f"{msg_type}:{msg.SerializeToString().hex()}"
-        cached_value = redis_conn(decode_responses=False).get(cache_key)
-        if cached_value:
-            return response_type.FromString(cached_value)
-    except Exception as e:
-        LOGGER.warning(f"Failed to parse cached value: {e}")
+# def call_steam_proxy(
+#     msg_type: int,
+#     msg: Message,
+#     response_type: type[R],
+#     cooldown_time: int,
+#     groups: list[str],
+#     cache_time: int | None = None,
+# ) -> R:
+#     try:
+#         cache_key = f"{msg_type}:{msg.SerializeToString().hex()}"
+#         cached_value = redis_conn(decode_responses=False).get(cache_key)
+#         if cached_value:
+#             return response_type.FromString(cached_value)
+#     except Exception as e:
+#         LOGGER.warning(f"Failed to parse cached value: {e}")
+#
+#     MAX_RETRIES = 3
+#     for i in range(MAX_RETRIES):
+#         try:
+#             data = call_steam_proxy_raw(msg_type, msg, cooldown_time, groups)
+#             try:
+#                 if cache_time:
+#                     redis_conn().setex(cache_key, cache_time, data)
+#             except Exception as e:
+#                 LOGGER.warning(f"Failed to cache value: {e}")
+#             return response_type.FromString(data)
+#         except Exception as e:
+#             LOGGER.warning(f"Failed to call Steam proxy: {e}")
+#             if i == MAX_RETRIES - 1:
+#                 raise
+#     raise RuntimeError("steam proxy retry raise invariant broken: - should never hit this point")
 
-    MAX_RETRIES = 3
-    for i in range(MAX_RETRIES):
-        try:
-            data = call_steam_proxy_raw(msg_type, msg, cooldown_time, groups)
-            try:
-                if cache_time:
-                    redis_conn().setex(cache_key, cache_time, data)
-            except Exception as e:
-                LOGGER.warning(f"Failed to cache value: {e}")
-            return response_type.FromString(data)
-        except Exception as e:
-            LOGGER.warning(f"Failed to call Steam proxy: {e}")
-            if i == MAX_RETRIES - 1:
-                raise
-    raise RuntimeError("steam proxy retry raise invariant broken: - should never hit this point")
 
-
-def call_steam_proxy_raw(
-    msg_type: int, msg: Message, cooldown_time: int, groups: list[str]
-) -> bytes:
-    assert CONFIG.steam_proxy, "SteamProxyConfig must be configured to call the proxy"
-
-    msg = msg.SerializeToString()
-    LOGGER.info(f"Calling Steam proxy: {msg_type=} {msg=} {groups=}")
-    msg_data = b64encode(msg).decode("utf-8")
-    body = {
-        "message_kind": msg_type,
-        "job_cooldown_millis": cooldown_time,
-        "bot_in_all_groups": groups,
-        "data": msg_data,
-    }
-    response = requests.post(
-        CONFIG.steam_proxy.url,
-        json=body,
-        headers={"Authorization": f"Bearer {CONFIG.steam_proxy.api_token}"},
-    )
-    try:
-        response.raise_for_status()
-    except HTTPError as e:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-    data = response.json()["data"]
-    return b64decode(data)
+# def call_steam_proxy_raw(
+#     msg_type: int, msg: Message, cooldown_time: int, groups: list[str]
+# ) -> bytes:
+#     assert CONFIG.steam_proxy, "SteamProxyConfig must be configured to call the proxy"
+#
+#     msg = msg.SerializeToString()
+#     LOGGER.info(f"Calling Steam proxy: {msg_type=} {msg=} {groups=}")
+#     msg_data = b64encode(msg).decode("utf-8")
+#     body = {
+#         "message_kind": msg_type,
+#         "job_cooldown_millis": cooldown_time,
+#         "bot_in_all_groups": groups,
+#         "data": msg_data,
+#     }
+#     response = requests.post(
+#         CONFIG.steam_proxy.url,
+#         json=body,
+#         headers={"Authorization": f"Bearer {CONFIG.steam_proxy.api_token}"},
+#     )
+#     try:
+#         response.raise_for_status()
+#     except HTTPError as e:
+#         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+#     data = response.json()["data"]
+#     return b64decode(data)
 
 
 class APIKeyHeaderOrQuery(APIKeyBase):
@@ -180,31 +174,31 @@ def is_internal_api_key(api_key: str) -> bool:
     return api_key in available_api_keys
 
 
-def validate_account_groups(account_groups: str, api_key: str | None) -> str | None:
-    if not account_groups:
-        return None
-    if not api_key:
-        raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="Account groups require an API key"
-        )
-    for group in account_groups.split(","):
-        if not has_api_key_account_group_access(api_key, group):
-            raise HTTPException(
-                status_code=HTTP_403_FORBIDDEN, detail=f"Invalid account group: {group}"
-            )
-    return account_groups
+# def validate_account_groups(account_groups: str, api_key: str | None) -> str | None:
+#     if not account_groups:
+#         return None
+#     if not api_key:
+#         raise HTTPException(
+#             status_code=HTTP_403_FORBIDDEN, detail="Account groups require an API key"
+#         )
+#     for group in account_groups.split(","):
+#         if not has_api_key_account_group_access(api_key, group):
+#             raise HTTPException(
+#                 status_code=HTTP_403_FORBIDDEN, detail=f"Invalid account group: {group}"
+#             )
+#     return account_groups
 
 
-def has_api_key_account_group_access(api_key: str, group_name: str = None):
-    if not is_valid_api_key(api_key):
-        raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-    api_key = api_key.lstrip("HEXE-")
-    with postgres_conn().cursor() as cursor:
-        cursor.execute(
-            "SELECT 1 FROM api_key_account_groups WHERE key = %s AND account_group_name = %s",
-            (str(api_key), group_name),
-        )
-        return cursor.fetchone() is not None
+# def has_api_key_account_group_access(api_key: str, group_name: str = None):
+#     if not is_valid_api_key(api_key):
+#         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+#     api_key = api_key.lstrip("HEXE-")
+#     with postgres_conn().cursor() as cursor:
+#         cursor.execute(
+#             "SELECT 1 FROM api_key_account_groups WHERE key = %s AND account_group_name = %s",
+#             (str(api_key), group_name),
+#         )
+#         return cursor.fetchone() is not None
 
 
 async def get_api_key(api_key: str = Security(api_key_param)):
@@ -213,20 +207,20 @@ async def get_api_key(api_key: str = Security(api_key_param)):
     return api_key
 
 
-async def get_data_api_key(api_key: str = Security(api_key_param)):
-    try:
-        if not is_valid_api_key(api_key, True):
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-    return api_key
+# async def get_data_api_key(api_key: str = Security(api_key_param)):
+#     try:
+#         if not is_valid_api_key(api_key, True):
+#             raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+#     except Exception as e:
+#         print(e)
+#         raise HTTPException(status_code=HTTP_403_FORBIDDEN)
+#     return api_key
 
 
-def validate_steam_id_optional(steam_id: int | str | None) -> int | None:
-    if not steam_id:
-        return None
-    return validate_steam_id(steam_id)
+# def validate_steam_id_optional(steam_id: int | str | None) -> int | None:
+#     if not steam_id:
+#         return None
+#     return validate_steam_id(steam_id)
 
 
 def validate_steam_id(steam_id: int | str) -> int:
@@ -264,29 +258,29 @@ def steamid3_to_steamid64(steamid3: int) -> int:
 #         return None
 
 
-T = TypeVar("T")  # Generic type variable
+# T = TypeVar("T")  # Generic type variable
 
 
-def notnone(value: T | None, message: str = "Value cannot be None") -> T:
-    """
-    Asserts that a value is not None and returns it with proper typing.
-
-    Args:
-        value: The value to check
-        message: Custom error message for when assertion fails
-
-    Returns:
-        The input value if it's not None
-
-    Raises:
-        AssertionError: If the value is None
-
-    Examples:
-        >>> x: str | None = get_optional_string()
-        >>> validated_x: str = assert_not_none(x)
-    """
-    assert value is not None, message
-    return value
+# def notnone(value: T | None, message: str = "Value cannot be None") -> T:
+#     """
+#     Asserts that a value is not None and returns it with proper typing.
+#
+#     Args:
+#         value: The value to check
+#         message: Custom error message for when assertion fails
+#
+#     Returns:
+#         The input value if it's not None
+#
+#     Raises:
+#         AssertionError: If the value is None
+#
+#     Examples:
+#         >>> x: str | None = get_optional_string()
+#         >>> validated_x: str = assert_not_none(x)
+#     """
+#     assert value is not None, message
+#     return value
 
 
 def subscribe_webhook(webhook_url: str, event_types: list[str]) -> dict:
