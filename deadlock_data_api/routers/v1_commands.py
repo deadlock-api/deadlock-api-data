@@ -5,7 +5,6 @@ import json
 import logging
 import os.path
 from collections import Counter
-from collections.abc import Generator
 from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
@@ -13,15 +12,12 @@ import requests
 from cachetools.func import ttl_cache
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Query
-from more_itertools import peekable
 from pydantic import BaseModel
 from retry import retry
 from starlette.responses import PlainTextResponse, Response
 
 from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.models.player_match_history import PlayerMatchHistoryEntry
-from deadlock_data_api.routers import v2
 
 LOGGER = logging.getLogger(__name__)
 
@@ -176,6 +172,15 @@ def get_hero_id_with_retry_cached(hero_name: str) -> int:
     return hero_id
 
 
+@ttl_cache(ttl=60)
+@retry(tries=3)
+def fetch_match_history_with_retry_cached(account_id: int) -> list[dict]:
+    response = requests.get(f"https://api.deadlock-api.com/v1/players/{account_id}/match-history")
+    if not response.ok:
+        raise CommandResolveError("Failed to fetch match history")
+    return response.json()
+
+
 def get_rank_name(rank: int) -> str:
     rank, subrank = divmod(rank, 10)
     ranks = get_ranks_with_retry_cached()
@@ -206,53 +211,23 @@ def get_leaderboard_entry(
     raise CommandResolveError("Player not found in leaderboard")
 
 
-def next_match_generator(account_id: int) -> Generator[PlayerMatchHistoryEntry, None, None]:
-    last_match_id = None
-    while last_match_id is None or last_match_id > 0:
-        match_history = v2.get_player_match_history(
-            account_id, last_match_id, insert_to_ch=False
-        ).matches
-        if not match_history:
-            raise StopIteration
-        for match in sorted(match_history, key=lambda x: x.start_time, reverse=True):
-            last_match_id = match.match_id
-            yield match
-    raise StopIteration
-
-
-@ttl_cache(ttl=60)
-@retry(tries=3)
-def get_daily_matches(account_id: int) -> list[PlayerMatchHistoryEntry]:
-    try:
-        match_history = peekable(next_match_generator(account_id))
-        first_match = match_history.peek()
-    except (RuntimeError, StopIteration):
-        return []
+def get_daily_matches(account_id: int) -> list[dict]:
+    match_history = fetch_match_history_with_retry_cached(account_id)
+    first_match = match_history[0]
 
     # If the first match is older than 8 hours ago, we can assume that the player has no matches today
-    if first_match.start_time < int((datetime.now() - timedelta(hours=8)).timestamp()):
+    if first_match["start_time"] < int((datetime.now() - timedelta(hours=8)).timestamp()):
         return []
 
     # Now we can iterate over the match history
     # All matches that are less than 6 hours apart are considered to be from the same day
     daily_matches = [first_match]
     for last_match, match in itertools.pairwise(match_history):
-        break_time = abs(last_match.start_time - match.start_time)
+        break_time = abs(last_match["start_time"] - match["start_time"])
         if break_time > timedelta(hours=6).total_seconds():
             break
         daily_matches.append(match)
     return daily_matches
-
-
-@ttl_cache(ttl=60)
-@retry(tries=3)
-def fetch_full_match_history(account_id: int) -> list[dict]:
-    response = requests.get(
-        f"https://analytics.deadlock-api.com/v2/players/{account_id}/match-history?without_avg_badge=true"
-    )
-    if not response.ok:
-        raise CommandResolveError("Failed to fetch match history")
-    return response.json()
 
 
 @ttl_cache(ttl=60 * 60)
@@ -306,13 +281,13 @@ class CommandVariable:
     def wins_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of wins today"""
         matches = get_daily_matches(account_id)
-        wins = sum(m.match_result == m.player_team for m in matches)
+        wins = sum(m["match_result"] == m["player_team"] for m in matches)
         return str(wins)
 
     def losses_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of losses today"""
         matches = get_daily_matches(account_id)
-        losses = sum(m.match_result != m.player_team for m in matches)
+        losses = sum(m["match_result"] != m["player_team"] for m in matches)
         return str(losses)
 
     def matches_today(self, account_id: int, *args, **kwargs) -> str:
@@ -331,14 +306,14 @@ class CommandVariable:
     def wins_losses_today(self, account_id: int, *args, **kwargs) -> str:
         """Get the number of wins and losses today"""
         matches = get_daily_matches(account_id)
-        wins = sum(m.match_result == m.player_team for m in matches)
-        losses = sum(m.match_result != m.player_team for m in matches)
+        wins = sum(m["match_result"] == m["player_team"] for m in matches)
+        losses = sum(m["match_result"] != m["player_team"] for m in matches)
         return f"{wins}-{losses}"
 
     def heroes_played_today(self, account_id: int, *args, **kwargs) -> str:
         """Get a list of all heroes played today with the number of matches played"""
         matches = get_daily_matches(account_id)
-        hero_counts = Counter(m.hero_id for m in matches)
+        hero_counts = Counter(m["hero_id"] for m in matches)
         hero_data = requests.get("https://assets.deadlock-api.com/v2/heroes").json()
         hero_name = {hero["id"]: hero["name"] for hero in hero_data}
         return ", ".join(
@@ -347,32 +322,32 @@ class CommandVariable:
 
     def highest_kill_count(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest kill count in a match"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(max((m.get("player_kills", 0) for m in matches), default=0))
 
     def highest_death_count(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest death count in a match"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(max((m.get("player_deaths", 0) for m in matches), default=0))
 
     def highest_net_worth(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest net worth in a match"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(max((m.get("net_worth", 0) for m in matches), default=0))
 
     def highest_last_hits(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest last hits in a match"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(max((m.get("last_hits", 0) for m in matches), default=0))
 
     def highest_denies(self, account_id: int, *args, **kwargs) -> str:
         """Get the highest denies in a match"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(max((m.get("denies", 0) for m in matches), default=0))
 
     def most_played_hero(self, account_id: int, *args, **kwargs) -> str:
         """Get the most played hero"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         hero_counts = Counter(m.get("hero_id") for m in matches)
         hero_id, _ = hero_counts.most_common(1)[0]
         hero_data = requests.get(f"https://assets.deadlock-api.com/v2/heroes/{hero_id}").json()
@@ -380,7 +355,7 @@ class CommandVariable:
 
     def most_played_hero_count(self, account_id: int, *args, **kwargs) -> str:
         """Get the most played hero count"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         hero_counts = Counter(m.get("hero_id") for m in matches)
         _, count = hero_counts.most_common(1)[0]
         return str(count)
@@ -388,25 +363,25 @@ class CommandVariable:
     def hero_level(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
         """Get the hero level"""
         hero_id = get_hero_id_with_retry_cached(hero_name)
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(
             max((m.get("hero_level", 0) for m in matches if m.get("hero_id") == hero_id), default=0)
         )
 
     def total_kills(self, account_id: int, *args, **kwargs) -> str:
         """Get the total kills in all matches"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(sum(m.get("player_kills", 0) for m in matches))
 
     def hero_kills(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
         """Get the total kills in all matches for a specific hero"""
         hero_id = get_hero_id_with_retry_cached(hero_name)
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(sum(m.get("player_kills", 0) for m in matches if m.get("hero_id") == hero_id))
 
     def total_kd(self, account_id: int, *args, **kwargs) -> str:
         """Get the KD ratio"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         total_kills = sum(m.get("player_kills", 0) for m in matches)
         total_deaths = sum(m.get("player_deaths", 0) for m in matches)
         return f"{total_kills / total_deaths:.2f}" if total_deaths > 0 else "0.00"
@@ -414,7 +389,7 @@ class CommandVariable:
     def hero_kd(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
         """Get the KD ratio for a specific hero"""
         hero_id = get_hero_id_with_retry_cached(hero_name)
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         total_kills = sum(m.get("player_kills", 0) for m in matches if m.get("hero_id") == hero_id)
         total_deaths = sum(
             m.get("player_deaths", 0) for m in matches if m.get("hero_id") == hero_id
@@ -423,73 +398,35 @@ class CommandVariable:
 
     def total_wins(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of wins"""
-        matches = fetch_full_match_history(account_id)
-
-        def team_index(team: str) -> int:
-            if team == "Team0":
-                return 0
-            elif team == "Team1":
-                return 1
-            else:
-                return -1
-
-        matches = [m for m in matches if m.get("match_result") == team_index(m.get("player_team"))]
+        matches = fetch_match_history_with_retry_cached(account_id)
+        matches = [m for m in matches if m.get("match_result") == m.get("player_team")]
         return str(len(matches))
 
     def hero_wins(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
         """Get the total number of wins for a specific hero"""
         hero_id = get_hero_id_with_retry_cached(hero_name)
-        matches = fetch_full_match_history(account_id)
-
-        def team_index(team: str) -> int:
-            if team == "Team0":
-                return 0
-            elif team == "Team1":
-                return 1
-            else:
-                return -1
-
+        matches = fetch_match_history_with_retry_cached(account_id)
         matches = [
             m
             for m in matches
-            if m.get("match_result") == team_index(m.get("player_team"))
-            and m.get("hero_id") == hero_id
+            if m.get("match_result") == m.get("player_team") and m.get("hero_id") == hero_id
         ]
         return str(len(matches))
 
     def total_losses(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of losses"""
-        matches = fetch_full_match_history(account_id)
-
-        def team_index(team: str) -> int:
-            if team == "Team0":
-                return 0
-            elif team == "Team1":
-                return 1
-            else:
-                return -1
-
-        matches = [m for m in matches if m.get("match_result") != team_index(m.get("player_team"))]
+        matches = fetch_match_history_with_retry_cached(account_id)
+        matches = [m for m in matches if m.get("match_result") != m.get("player_team")]
         return str(len(matches))
 
     def hero_losses(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
         """Get the total number of losses for a specific hero"""
         hero_id = get_hero_id_with_retry_cached(hero_name)
-        matches = fetch_full_match_history(account_id)
-
-        def team_index(team: str) -> int:
-            if team == "Team0":
-                return 0
-            elif team == "Team1":
-                return 1
-            else:
-                return -1
-
+        matches = fetch_match_history_with_retry_cached(account_id)
         matches = [
             m
             for m in matches
-            if m.get("match_result") != team_index(m.get("player_team"))
-            and m.get("hero_id") == hero_id
+            if m.get("match_result") != m.get("player_team") and m.get("hero_id") == hero_id
         ]
         return str(len(matches))
 
@@ -507,18 +444,18 @@ class CommandVariable:
 
     def total_matches(self, account_id: int, *args, **kwargs) -> str:
         """Get the total number of matches played"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(len(matches))
 
     def hero_matches(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
         """Get the total number of matches played for a specific hero"""
         hero_id = get_hero_id_with_retry_cached(hero_name)
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return str(len([m for m in matches if m.get("hero_id") == hero_id]))
 
     def hours_played(self, account_id: int, *args, **kwargs) -> str:
         """Get the total hours played in all matches"""
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return f"{sum(m.get('match_duration_s', 0) for m in matches) // 3600}h"
 
     def hero_hours_played(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
@@ -527,7 +464,7 @@ class CommandVariable:
             hero_id = get_hero_id_with_retry_cached(hero_name)
         except CommandResolveError:
             return "Hero not found"
-        matches = fetch_full_match_history(account_id)
+        matches = fetch_match_history_with_retry_cached(account_id)
         return f"{
             sum(m.get('match_duration_s', 0) for m in matches if m.get('hero_id') == hero_id)
             // 3600

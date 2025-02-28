@@ -10,16 +10,10 @@ from starlette.status import HTTP_301_MOVED_PERMANENTLY
 
 from deadlock_data_api import utils
 from deadlock_data_api.models.player_card import PlayerCard
-from deadlock_data_api.models.player_match_history import (
-    PlayerMatchHistoryEntry,
-)
 from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload
 from deadlock_data_api.rate_limiter import limiter
 from deadlock_data_api.rate_limiter.models import RateLimit
-from deadlock_data_api.routers.v1_utils import (
-    get_player_match_history,
-    get_player_rank,
-)
+from deadlock_data_api.routers.v1_utils import get_player_rank
 from deadlock_data_api.utils import send_webhook_event
 
 # CACHE_AGE_ACTIVE_MATCHES = 20
@@ -272,32 +266,26 @@ def hero_leaderboard(
 
 @router.get(
     "/players/{account_id}/match-history",
-    response_model_exclude_none=True,
-    summary="Rate Limit 60req/min, API-Key RateLimit: 100req/s, Shared Rate Limit with /v2/players/{account_id}/match-history",
+    summary="Moved to new API: http://api.deadlock-api.com/",
+    description="""
+# Endpoint moved to new API
+- New API Docs: http://api.deadlock-api.com/docs
+- New API Endpoint: https://api.deadlock-api.com/v1/players/{account_id}/match-history,
+    """,
     deprecated=True,
 )
-def player_match_history(
-    req: Request, res: Response, account_id: int, account_groups: str | None = None
-) -> list[PlayerMatchHistoryEntry]:
-    limiter.apply_limits(
-        req,
-        res,
-        "/players/{account_id}/match-history",
-        [RateLimit(limit=60, period=60)],
-        [RateLimit(limit=100, period=1)],
-        [RateLimit(limit=1000, period=1)] if not account_groups else [],
+def player_match_history(account_id: int) -> RedirectResponse:
+    return RedirectResponse(
+        url=f"https://api.deadlock-api.com/v1/players/{account_id}/match-history",
+        status_code=HTTP_301_MOVED_PERMANENTLY,
     )
-    res.headers["Cache-Control"] = "public, max-age=60"
-    account_id = utils.validate_steam_id(account_id)
-    account_groups = utils.validate_account_groups(
-        account_groups, req.headers.get("X-API-Key", req.query_params.get("api_key"))
-    )
-    return get_player_match_history(account_id, account_groups=account_groups).matches
 
 
 @router.get("/matches/{match_id}/raw_metadata", include_in_schema=False)
 def get_raw_metadata_file_old(match_id: int):
-    return RedirectResponse(url=f"/v1/matches/{match_id}/raw-metadata", status_code=301)
+    return RedirectResponse(
+        url=f"/v1/matches/{match_id}/raw-metadata", status_code=HTTP_301_MOVED_PERMANENTLY
+    )
 
 
 # def cache_metadata_background(match_id: int, metafile: bytes, upload_to_main: bool = False):

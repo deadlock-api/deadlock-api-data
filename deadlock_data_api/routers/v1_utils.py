@@ -1,61 +1,49 @@
-import logging
-
-from fastapi import HTTPException
-from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 from valveprotos_py.citadel_gcmessages_client_pb2 import (
     CMsgCitadelProfileCard,
-    CMsgClientToGCGetMatchHistory,
-    CMsgClientToGCGetMatchHistoryResponse,
     CMsgClientToGCGetProfileCard,
-    k_EMsgClientToGCGetMatchHistory,
     k_EMsgClientToGCGetProfileCard,
 )
 
-from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import CH_POOL
 from deadlock_data_api.models.player_card import PlayerCard
-from deadlock_data_api.models.player_match_history import (
-    PlayerMatchHistory,
-    PlayerMatchHistoryEntry,
-)
 from deadlock_data_api.utils import call_steam_proxy
 
 # CACHE_AGE_ACTIVE_MATCHES = 20
 # CACHE_AGE_BUILDS = 5 * 60
 # LOAD_FILE_RETRIES = 5
 
-LOGGER = logging.getLogger(__name__)
+# LOGGER = logging.getLogger(__name__)
 
 
-def get_player_match_history(
-    account_id: int,
-    continue_cursor: int | None = None,
-    account_groups: str | None = None,
-    insert_to_ch: bool = True,
-) -> PlayerMatchHistory:
-    if CONFIG.deactivate_match_history and account_groups is None:
-        raise HTTPException(
-            status_code=HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Calls to Steam API are currently unavailable, try analytics match history instead",
-        )
-    msg = CMsgClientToGCGetMatchHistory()
-    msg.account_id = account_id
-    if continue_cursor is not None:
-        msg.continue_cursor = continue_cursor
-    msg = call_steam_proxy(
-        k_EMsgClientToGCGetMatchHistory,
-        msg,
-        CMsgClientToGCGetMatchHistoryResponse,
-        15_000,  # 4 per minute
-        account_groups.split(",") if account_groups else ["GetMatchHistory"],
-        60,
-    )
-    match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
-    match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
-    if insert_to_ch:
-        with CH_POOL.get_client() as client:
-            PlayerMatchHistoryEntry.store_clickhouse(client, account_id, match_history)
-    return PlayerMatchHistory(cursor=msg.continue_cursor, matches=match_history)
+# def get_player_match_history(
+#     account_id: int,
+#     continue_cursor: int | None = None,
+#     account_groups: str | None = None,
+#     insert_to_ch: bool = True,
+# ) -> PlayerMatchHistory:
+#     if CONFIG.deactivate_match_history and account_groups is None:
+#         raise HTTPException(
+#             status_code=HTTP_503_SERVICE_UNAVAILABLE,
+#             detail="Calls to Steam API are currently unavailable, try analytics match history instead",
+#         )
+#     msg = CMsgClientToGCGetMatchHistory()
+#     msg.account_id = account_id
+#     if continue_cursor is not None:
+#         msg.continue_cursor = continue_cursor
+#     msg = call_steam_proxy(
+#         k_EMsgClientToGCGetMatchHistory,
+#         msg,
+#         CMsgClientToGCGetMatchHistoryResponse,
+#         15_000,  # 4 per minute
+#         account_groups.split(",") if account_groups else ["GetMatchHistory"],
+#         60,
+#     )
+#     match_history = [PlayerMatchHistoryEntry.from_msg(m) for m in msg.matches]
+#     match_history = sorted(match_history, key=lambda x: x.start_time, reverse=True)
+#     if insert_to_ch:
+#         with CH_POOL.get_client() as client:
+#             PlayerMatchHistoryEntry.store_clickhouse(client, account_id, match_history)
+#     return PlayerMatchHistory(cursor=msg.continue_cursor, matches=match_history)
 
 
 # @ttl_cache(ttl=60 * 60)
