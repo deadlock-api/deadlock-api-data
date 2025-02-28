@@ -213,6 +213,8 @@ def get_leaderboard_entry(
 
 def get_daily_matches(account_id: int) -> list[dict]:
     match_history = fetch_match_history_with_retry_cached(account_id)
+    if not match_history:
+        return []
     first_match = match_history[0]
 
     # If the first match is older than 8 hours ago, we can assume that the player has no matches today
