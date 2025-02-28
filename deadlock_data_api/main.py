@@ -12,7 +12,7 @@ from deadlock_data_api import utils
 from deadlock_data_api.conf import CONFIG
 from deadlock_data_api.globs import postgres_conn
 from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload, WebhookSubscribeRequest
-from deadlock_data_api.routers import base, live, v1, v1_commands, v2
+from deadlock_data_api.routers import base, v1, v1_commands, v2
 from deadlock_data_api.utils import ExcludeRoutesMiddleware
 
 # Doesn't use AppConfig because logging is critical
@@ -89,7 +89,6 @@ async def _startup():
 app.include_router(v2.router)
 app.include_router(v1.router)
 app.include_router(v1_commands.router)
-app.include_router(live.router)
 app.include_router(base.router, include_in_schema=False)
 
 
