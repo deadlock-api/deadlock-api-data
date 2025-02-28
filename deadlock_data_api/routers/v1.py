@@ -1,16 +1,11 @@
 import logging
 from typing import Literal
 
-from fastapi import APIRouter, Depends
-from fastapi.openapi.models import APIKey
+from fastapi import APIRouter
 from starlette.datastructures import URL
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.status import HTTP_301_MOVED_PERMANENTLY
-
-from deadlock_data_api import utils
-from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload
-from deadlock_data_api.utils import send_webhook_event
 
 # CACHE_AGE_ACTIVE_MATCHES = 20
 # CACHE_AGE_BUILDS = 5 * 60
@@ -358,16 +353,7 @@ def get_match_salts(match_id: int, needs_demo: bool = False) -> RedirectResponse
 
 
 @router.post("/matches/{match_id}/ingest", tags=["Webhooks"], include_in_schema=False)
-def match_created_event(
-    match_id: int,
-    api_key: APIKey = Depends(utils.get_internal_api_key),
-):
-    LOGGER.debug(f"Authenticated with API-Key: {api_key}")
-    payload = MatchCreatedWebhookPayload(
-        match_id=match_id,
-        salts_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/salts",
-        metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/metadata",
-        raw_metadata_url=f"https://data.deadlock-api.com/v1/matches/{match_id}/raw-metadata",
+def match_created_event(match_id: int) -> RedirectResponse:
+    return RedirectResponse(
+        f"https://api.deadlock-api.com/v1/matches/{match_id}/ingest", HTTP_301_MOVED_PERMANENTLY
     )
-    send_webhook_event("match.metadata.created", payload.model_dump_json())
-    return {"status": "success"}

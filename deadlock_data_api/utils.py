@@ -1,6 +1,3 @@
-import uuid
-from datetime import datetime
-
 import requests
 from cachetools.func import ttl_cache
 from fastapi import HTTPException, Security
@@ -313,20 +310,20 @@ def unsubscribe_webhook(subscription_id: str):
     ).raise_for_status()
 
 
-def send_webhook_event(event_type: str, data: str):
-    requests.post(
-        f"{CONFIG.hook0.api_url}/event",
-        json={
-            "application_id": CONFIG.hook0.application_id,
-            "event_id": str(uuid.uuid4()),
-            "event_type": event_type,
-            "labels": {"all": "yes"},
-            "occurred_at": f"{datetime.now().isoformat()}Z",
-            "payload_content_type": "application/json",
-            "payload": data,
-        },
-        headers={"Authorization": f"Bearer {CONFIG.hook0.api_key}"},
-    ).raise_for_status()
+# def send_webhook_event(event_type: str, data: str):
+#     requests.post(
+#         f"{CONFIG.hook0.api_url}/event",
+#         json={
+#             "application_id": CONFIG.hook0.application_id,
+#             "event_id": str(uuid.uuid4()),
+#             "event_type": event_type,
+#             "labels": {"all": "yes"},
+#             "occurred_at": f"{datetime.now().isoformat()}Z",
+#             "payload_content_type": "application/json",
+#             "payload": data,
+#         },
+#         headers={"Authorization": f"Bearer {CONFIG.hook0.api_key}"},
+#     ).raise_for_status()
 
 
 class ExcludeRoutesMiddleware(BaseHTTPMiddleware):
