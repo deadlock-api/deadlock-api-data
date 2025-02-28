@@ -362,14 +362,6 @@ class CommandVariable:
         _, count = hero_counts.most_common(1)[0]
         return str(count)
 
-    def hero_level(self, account_id: int, hero_name: str, *args, **kwargs) -> str:
-        """Get the hero level"""
-        hero_id = get_hero_id_with_retry_cached(hero_name)
-        matches = fetch_match_history_with_retry_cached(account_id)
-        return str(
-            max((m.get("hero_level", 0) for m in matches if m.get("hero_id") == hero_id), default=0)
-        )
-
     def total_kills(self, account_id: int, *args, **kwargs) -> str:
         """Get the total kills in all matches"""
         matches = fetch_match_history_with_retry_cached(account_id)
