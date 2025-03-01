@@ -214,7 +214,7 @@ def player_rank(account_id: int) -> RedirectResponse:
     description="""
 # Endpoint moved to new API
 - New API Docs: https://api.deadlock-api.com/docs
-- New API Endpoint: https://api.deadlock-api.com/v1/leaderboard/{region},
+- New API Endpoint: https://api.deadlock-api.com/v1/leaderboard/{region}
     """,
     deprecated=True,
 )
@@ -232,7 +232,7 @@ def leaderboard(
     description="""
 # Endpoint moved to new API
 - New API Docs: https://api.deadlock-api.com/docs
-- New API Endpoint: https://api.deadlock-api.com/v1/leaderboard/{region}/{hero_id},
+- New API Endpoint: https://api.deadlock-api.com/v1/leaderboard/{region}/{hero_id}
     """,
     deprecated=True,
 )
@@ -251,7 +251,7 @@ def hero_leaderboard(
     description="""
 # Endpoint moved to new API
 - New API Docs: https://api.deadlock-api.com/docs
-- New API Endpoint: https://api.deadlock-api.com/v1/players/{account_id}/match-history,
+- New API Endpoint: https://api.deadlock-api.com/v1/players/{account_id}/match-history
     """,
     deprecated=True,
 )
@@ -291,7 +291,7 @@ def get_raw_metadata_file_old(match_id: int):
     description="""
 # Endpoint moved to new API
 - New API Docs: https://api.deadlock-api.com/docs
-- New API Endpoint: https://api.deadlock-api.com/v1/matches/{match_id}/metadata/raw,
+- New API Endpoint: https://api.deadlock-api.com/v1/matches/{match_id}/metadata/raw
     """,
     deprecated=True,
 )
@@ -308,7 +308,7 @@ def get_raw_metadata_file(match_id: int) -> RedirectResponse:
     description="""
 # Endpoint moved to new API
 - New API Docs: https://api.deadlock-api.com/docs
-- New API Endpoint: https://api.deadlock-api.com/v1/matches/{match_id}/metadata,
+- New API Endpoint: https://api.deadlock-api.com/v1/matches/{match_id}/metadata
     """,
     deprecated=True,
 )
@@ -325,7 +325,7 @@ async def get_metadata(match_id: int) -> RedirectResponse:
     description="""
 # Endpoint moved to new API
 - New API Docs: https://api.deadlock-api.com/docs
-- New API Endpoint: https://api.deadlock-api.com/v1/matches/{match_id}/salts,
+- New API Endpoint: https://api.deadlock-api.com/v1/matches/{match_id}/salts
     """,
     deprecated=True,
 )
@@ -341,7 +341,7 @@ def get_demo_url(match_id: int) -> RedirectResponse:
     description="""
 # Endpoint moved to new API
 - New API Docs: https://api.deadlock-api.com/docs
-- New API Endpoint: https://api.deadlock-api.com/v1/matches/{match_id}/salts,
+- New API Endpoint: https://api.deadlock-api.com/v1/matches/{match_id}/salts
     """,
     deprecated=True,
 )

@@ -130,7 +130,7 @@ class AppConfig:
     # kafka: KafkaConfig
     hook0: HOOK0Config
     # steam_proxy: SteamProxyConfig | None
-    steam_api_key: str
+    # steam_api_key: str
     # emergency_mode: bool
     # enforce_rate_limits: bool
     # demo_retention_days: int
@@ -150,7 +150,7 @@ class AppConfig:
             # kafka=KafkaConfig.from_env(),
             hook0=HOOK0Config.from_env(),
             # steam_proxy=SteamProxyConfig.from_env(),
-            steam_api_key=os.environ.get("STEAM_API_KEY"),
+            # steam_api_key=os.environ.get("STEAM_API_KEY"),
             # emergency_mode=os.environ.get("EMERGENCY_MODE") == "true",
             # enforce_rate_limits=os.environ.get("ENFORCE_RATE_LIMITS") == "true",
             # demo_retention_days=int(os.environ.get("DEMO_RETENTION_DAYS", 21)),
