@@ -102,7 +102,7 @@ def get_hero_leaderboard_rank_command_by_name(
 )
 def get_record_command(account_id: int) -> RedirectResponse:
     url = URL("https://api.deadlock-api.com/v1/commands/resolve")
-    url.include_query_params(
+    url = url.include_query_params(
         region="NAmerica", account_id=account_id, template="{wins_today}W - {losses_today}L"
     )
     return RedirectResponse(url, HTTP_301_MOVED_PERMANENTLY)
@@ -527,9 +527,9 @@ def get_command_resolve(
     ] = None,
 ) -> RedirectResponse:
     url = URL("https://api.deadlock-api.com/v1/commands/resolve")
-    url.include_query_params(region=region, account_id=account_id, template=template)
+    url = url.include_query_params(region=region, account_id=account_id, template=template)
     if hero_name:
-        url.include_query_params(hero_name=hero_name)
+        url = url.include_query_params(hero_name=hero_name)
     return RedirectResponse(url, HTTP_301_MOVED_PERMANENTLY)
 
 
@@ -552,9 +552,9 @@ def get_variables_resolve(
     ] = None,
 ) -> RedirectResponse:
     url = URL("https://api.deadlock-api.com/v1/commands/variables/resolve")
-    url.include_query_params(region=region, account_id=account_id, variables=variables)
+    url = url.include_query_params(region=region, account_id=account_id, variables=variables)
     if hero_name:
-        url.include_query_params(hero_name=hero_name)
+        url = url.include_query_params(hero_name=hero_name)
     return RedirectResponse(url, HTTP_301_MOVED_PERMANENTLY)
 
 

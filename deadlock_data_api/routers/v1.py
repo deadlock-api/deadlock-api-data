@@ -188,7 +188,7 @@ def get_active_matches_raw() -> RedirectResponse:
 def get_active_matches(account_id: int | None = None) -> RedirectResponse:
     url = URL("https://api.deadlock-api.com/v1/matches/active")
     if account_id:
-        url.include_query_params(account_id=account_id)
+        url = url.include_query_params(account_id=account_id)
     return RedirectResponse(url, HTTP_301_MOVED_PERMANENTLY)
 
 
@@ -331,7 +331,7 @@ async def get_metadata(match_id: int) -> RedirectResponse:
 )
 def get_demo_url(match_id: int) -> RedirectResponse:
     url = URL(f"https://api.deadlock-api.com/v1/matches/{match_id}/salts")
-    url.include_query_params(needs_demo=True)
+    url = url.include_query_params(needs_demo=True)
     return RedirectResponse(url, HTTP_301_MOVED_PERMANENTLY)
 
 
@@ -348,7 +348,7 @@ def get_demo_url(match_id: int) -> RedirectResponse:
 def get_match_salts(match_id: int, needs_demo: bool = False) -> RedirectResponse:
     url = URL(f"https://api.deadlock-api.com/v1/matches/{match_id}/salts")
     if needs_demo:
-        url.include_query_params(needs_demo=needs_demo)
+        url = url.include_query_params(needs_demo=needs_demo)
     return RedirectResponse(url, HTTP_301_MOVED_PERMANENTLY)
 
 
