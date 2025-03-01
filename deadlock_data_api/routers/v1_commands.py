@@ -1,4 +1,3 @@
-import base64
 import inspect
 import itertools
 import json
@@ -527,19 +526,12 @@ def get_command_resolve(
     region: RegionType,
     account_id: int,
     template: Annotated[str | None, Query(..., description="Command template")] = None,
-    template_base64: Annotated[
-        str | None, Query(..., description="Command template base64 encoded")
-    ] = None,
     hero_name: Annotated[
         str | None, Query(..., description="Hero name to check for hero specific stats")
     ] = None,
 ) -> str:
     res.headers["Cache-Control"] = "public, max-age=60"
     account_id = utils.validate_steam_id(account_id)
-    if template is None and template_base64 is None:
-        return "Missing template"
-    if template is None and template_base64 is not None:
-        template = base64.b64decode(template_base64).decode("utf-8")
     kwargs = {
         "region": region,
         "account_id": account_id,
