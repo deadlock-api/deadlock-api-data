@@ -1,6 +1,3 @@
-import os
-from dataclasses import dataclass
-
 """
 A basic place to centralize configuration, can be later made more sophisticated
 """
@@ -40,19 +37,19 @@ A basic place to centralize configuration, can be later made more sophisticated
 #         )
 
 
-@dataclass
-class PostgresConfig:
-    host: str
-    password: str | None
-    port: int
-
-    @classmethod
-    def from_env(cls) -> "PostgresConfig":
-        return cls(
-            host=os.environ.get("POSTGRES_HOST", "postgres"),
-            password=os.environ.get("POSTGRES_PASS"),
-            port=int(os.environ.get("POSTGRES_PORT", 5432)),
-        )
+# @dataclass
+# class PostgresConfig:
+#     host: str
+#     password: str | None
+#     port: int
+#
+#     @classmethod
+#     def from_env(cls) -> "PostgresConfig":
+#         return cls(
+#             host=os.environ.get("POSTGRES_HOST", "postgres"),
+#             password=os.environ.get("POSTGRES_PASS"),
+#             port=int(os.environ.get("POSTGRES_PORT", 5432)),
+#         )
 
 
 # @dataclass
@@ -105,60 +102,60 @@ class PostgresConfig:
 #         )
 
 
-@dataclass
-class HOOK0Config:
-    api_url: str
-    application_id: str
-    api_key: str
-
-    @classmethod
-    def from_env(cls) -> "HOOK0Config":
-        return cls(
-            api_url=os.environ.get("HOOK0_API_URL", "https://webhook-api.deadlock-api.com/api/v1"),
-            application_id=os.environ.get("HOOK0_APPLICATION_ID"),
-            api_key=os.environ.get("HOOK0_API_KEY"),
-        )
-
-
-@dataclass
-class AppConfig:
-    # clickhouse: ClickhouseConfig
-    # redis: RedisConfig
-    postgres: PostgresConfig
-    # s3_main: S3Config
-    # s3_cache: S3Config
-    # kafka: KafkaConfig
-    hook0: HOOK0Config
-    # steam_proxy: SteamProxyConfig | None
-    # steam_api_key: str
-    # emergency_mode: bool
-    # enforce_rate_limits: bool
-    # demo_retention_days: int
-    sentry_dsn: str | None
-    # deactivate_match_history: bool = False
-    # deactivate_match_metadata: bool = False
-    # deactivate_live_endpoints: bool = False
-
-    @classmethod
-    def from_env(cls) -> "AppConfig":
-        return cls(
-            # clickhouse=ClickhouseConfig.from_env(),
-            # redis=RedisConfig.from_env(),
-            postgres=PostgresConfig.from_env(),
-            # s3_main=S3Config.from_env("MAIN"),
-            # s3_cache=S3Config.from_env("CACHE"),
-            # kafka=KafkaConfig.from_env(),
-            hook0=HOOK0Config.from_env(),
-            # steam_proxy=SteamProxyConfig.from_env(),
-            # steam_api_key=os.environ.get("STEAM_API_KEY"),
-            # emergency_mode=os.environ.get("EMERGENCY_MODE") == "true",
-            # enforce_rate_limits=os.environ.get("ENFORCE_RATE_LIMITS") == "true",
-            # demo_retention_days=int(os.environ.get("DEMO_RETENTION_DAYS", 21)),
-            sentry_dsn=os.environ.get("SENTRY_DSN"),
-            # deactivate_match_history=os.environ.get("DEACTIVATE_MATCH_HISTORY") == "true",
-            # deactivate_match_metadata=os.environ.get("DEACTIVATE_MATCH_METADATA") == "true",
-            # deactivate_live_endpoints=os.environ.get("DEACTIVATE_LIVE_ENDPOINTS") == "true",
-        )
+# @dataclass
+# class HOOK0Config:
+#     api_url: str
+#     application_id: str
+#     api_key: str
+#
+#     @classmethod
+#     def from_env(cls) -> "HOOK0Config":
+#         return cls(
+#             api_url=os.environ.get("HOOK0_API_URL", "https://webhook-api.deadlock-api.com/api/v1"),
+#             application_id=os.environ.get("HOOK0_APPLICATION_ID"),
+#             api_key=os.environ.get("HOOK0_API_KEY"),
+#         )
 
 
-CONFIG = AppConfig.from_env()
+# @dataclass
+# class AppConfig:
+#     # clickhouse: ClickhouseConfig
+#     # redis: RedisConfig
+#     # postgres: PostgresConfig
+#     # s3_main: S3Config
+#     # s3_cache: S3Config
+#     # kafka: KafkaConfig
+#     # hook0: HOOK0Config
+#     # steam_proxy: SteamProxyConfig | None
+#     # steam_api_key: str
+#     # emergency_mode: bool
+#     # enforce_rate_limits: bool
+#     # demo_retention_days: int
+#     # sentry_dsn: str | None
+#     # deactivate_match_history: bool = False
+#     # deactivate_match_metadata: bool = False
+#     # deactivate_live_endpoints: bool = False
+#
+#     @classmethod
+#     def from_env(cls) -> "AppConfig":
+#         return cls(
+#             # clickhouse=ClickhouseConfig.from_env(),
+#             # redis=RedisConfig.from_env(),
+#             # postgres=PostgresConfig.from_env(),
+#             # s3_main=S3Config.from_env("MAIN"),
+#             # s3_cache=S3Config.from_env("CACHE"),
+#             # kafka=KafkaConfig.from_env(),
+#             # hook0=HOOK0Config.from_env(),
+#             # steam_proxy=SteamProxyConfig.from_env(),
+#             # steam_api_key=os.environ.get("STEAM_API_KEY"),
+#             # emergency_mode=os.environ.get("EMERGENCY_MODE") == "true",
+#             # enforce_rate_limits=os.environ.get("ENFORCE_RATE_LIMITS") == "true",
+#             # demo_retention_days=int(os.environ.get("DEMO_RETENTION_DAYS", 21)),
+#             # sentry_dsn=os.environ.get("SENTRY_DSN"),
+#             # deactivate_match_history=os.environ.get("DEACTIVATE_MATCH_HISTORY") == "true",
+#             # deactivate_match_metadata=os.environ.get("DEACTIVATE_MATCH_METADATA") == "true",
+#             # deactivate_live_endpoints=os.environ.get("DEACTIVATE_LIVE_ENDPOINTS") == "true",
+#         )
+
+
+# CONFIG = AppConfig.from_env()

@@ -1,52 +1,19 @@
 import logging.config
 import os
-import sys
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import PlainTextResponse, RedirectResponse
 
-from deadlock_data_api import utils
-from deadlock_data_api.conf import CONFIG
-from deadlock_data_api.globs import postgres_conn
-from deadlock_data_api.models.webhook import MatchCreatedWebhookPayload, WebhookSubscribeRequest
 from deadlock_data_api.routers import base, v1, v1_commands, v2
-from deadlock_data_api.utils import ExcludeRoutesMiddleware
 
 # Doesn't use AppConfig because logging is critical
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
-logging.config.dictConfig(
-    {
-        "version": 1,
-        "formatters": {
-            "default": {
-                "format": "%(asctime)s %(process)s %(levelname)s %(name)s %(message)s",
-                "datefmt": "%Y-%m-%d %H:%M:%S",
-            }
-        },
-        "handlers": {
-            "console": {
-                "level": os.environ.get("LOG_LEVEL", "DEBUG"),
-                "class": "logging.StreamHandler",
-                "stream": sys.stderr,
-            }
-        },
-        "root": {"level": "DEBUG", "handlers": ["console"], "propagate": True},
-    }
-)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 LOGGER = logging.getLogger(__name__)
-
-if CONFIG.sentry_dsn:
-    import sentry_sdk
-
-    sentry_sdk.init(
-        dsn=CONFIG.sentry_dsn,
-        traces_sample_rate=0.01,
-    )
 
 app = FastAPI(
     title="Data - Deadlock API",
@@ -66,17 +33,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(
-    ExcludeRoutesMiddleware,
-    exclude_routes=["/metrics", "/health", "/robots.txt", "/v1/matches/{match_id}/raw-metadata"],
-    proxied_middleware_class=GZipMiddleware,
+    GZipMiddleware,
     minimum_size=1000,
     compresslevel=5,
 )
-if os.environ.get("LOGGING_MIDDLEWARE", "true").lower() == "true":
-    from deadlock_data_api.logging_middleware import RouterLoggingMiddleware
-
-    app.add_middleware(RouterLoggingMiddleware, logger=LOGGER)
-
 instrumentator = Instrumentator(should_group_status_codes=False).instrument(app)
 
 
@@ -111,82 +71,82 @@ def get_robots() -> str:
     return "User-Agent: *\nDisallow: /\nAllow: /docs\nAllow: /\n"
 
 
-@app.post("/matches/webhook/subscribe", summary="1 Webhook per API-Key", tags=["Webhooks"])
-def webhook_subscribe(
-    webhook_config: WebhookSubscribeRequest,
-    api_key=Depends(utils.get_api_key),
-):
-    LOGGER.debug(f"Authenticated with API-Key: {api_key}")
-    api_key = api_key.lstrip("HEXE-")
-    with postgres_conn().cursor() as cursor:
-        cursor.execute("SELECT 1 FROM webhooks WHERE api_key = %s", (api_key,))
-        result = cursor.fetchone()
-        if result is not None:
-            raise HTTPException(status_code=400, detail="Webhook already exists")
-        subscription = utils.subscribe_webhook(
-            webhook_config.webhook_url, ["match.metadata.created"]
-        )
-        cursor.execute(
-            "INSERT INTO webhooks (subscription_id, api_key, webhook_url) VALUES (%s, %s, %s)",
-            (subscription["subscription_id"], api_key, webhook_config.webhook_url),
-        )
-        cursor.execute("COMMIT")
-    return {
-        "status": "success",
-        "subscription_id": subscription["subscription_id"],
-        "event_types": subscription["event_types"],
-        "secret": subscription["secret"],
-    }
+# @app.post("/matches/webhook/subscribe", summary="1 Webhook per API-Key", tags=["Webhooks"])
+# def webhook_subscribe(
+#     webhook_config: WebhookSubscribeRequest,
+#     api_key=Depends(utils.get_api_key),
+# ):
+#     LOGGER.debug(f"Authenticated with API-Key: {api_key}")
+#     api_key = api_key.lstrip("HEXE-")
+#     with postgres_conn().cursor() as cursor:
+#         cursor.execute("SELECT 1 FROM webhooks WHERE api_key = %s", (api_key,))
+#         result = cursor.fetchone()
+#         if result is not None:
+#             raise HTTPException(status_code=400, detail="Webhook already exists")
+#         subscription = utils.subscribe_webhook(
+#             webhook_config.webhook_url, ["match.metadata.created"]
+#         )
+#         cursor.execute(
+#             "INSERT INTO webhooks (subscription_id, api_key, webhook_url) VALUES (%s, %s, %s)",
+#             (subscription["subscription_id"], api_key, webhook_config.webhook_url),
+#         )
+#         cursor.execute("COMMIT")
+#     return {
+#         "status": "success",
+#         "subscription_id": subscription["subscription_id"],
+#         "event_types": subscription["event_types"],
+#         "secret": subscription["secret"],
+#     }
 
 
-@app.get(
-    "/matches/webhook",
-    tags=["Webhooks"],
-)
-def webhook_list(api_key=Depends(utils.get_api_key)):
-    LOGGER.debug(f"Authenticated with API-Key: {api_key}")
-    api_key = api_key.lstrip("HEXE-")
-    with postgres_conn().cursor() as cursor:
-        cursor.execute(
-            "SELECT subscription_id, webhook_url FROM webhooks WHERE api_key = %s", (api_key,)
-        )
-        result = cursor.fetchall()
-    return [{"subscription_id": row[0], "webhook_url": row[1]} for row in result]
+# @app.get(
+#     "/matches/webhook",
+#     tags=["Webhooks"],
+# )
+# def webhook_list(api_key=Depends(utils.get_api_key)):
+#     LOGGER.debug(f"Authenticated with API-Key: {api_key}")
+#     api_key = api_key.lstrip("HEXE-")
+#     with postgres_conn().cursor() as cursor:
+#         cursor.execute(
+#             "SELECT subscription_id, webhook_url FROM webhooks WHERE api_key = %s", (api_key,)
+#         )
+#         result = cursor.fetchall()
+#     return [{"subscription_id": row[0], "webhook_url": row[1]} for row in result]
 
 
-@app.delete(
-    "/matches/webhook/{subscription_id}/unsubscribe",
-    summary="1 Webhook per API-Key",
-    tags=["Webhooks"],
-)
-def webhook_unsubscribe(subscription_id: str, api_key=Depends(utils.get_api_key)):
-    LOGGER.debug(f"Authenticated with API-Key: {api_key}")
-    api_key = api_key.lstrip("HEXE-")
-    with postgres_conn().cursor() as cursor:
-        cursor.execute(
-            "SELECT 1 FROM webhooks WHERE api_key = %s AND subscription_id = %s",
-            (api_key, subscription_id),
-        )
-        result = cursor.fetchone()
-        if result is None:
-            raise HTTPException(status_code=400, detail="Webhook does not exist")
-        utils.unsubscribe_webhook(subscription_id)
-        cursor.execute(
-            "DELETE FROM webhooks WHERE api_key = %s AND subscription_id = %s",
-            (api_key, subscription_id),
-        )
-        cursor.execute("COMMIT")
-    return {"status": "success"}
+# @app.delete(
+#     "/matches/webhook/{subscription_id}/unsubscribe",
+#     summary="1 Webhook per API-Key",
+#     tags=["Webhooks"],
+# )
+# def webhook_unsubscribe(subscription_id: str, api_key=Depends(utils.get_api_key)):
+#     LOGGER.debug(f"Authenticated with API-Key: {api_key}")
+#     api_key = api_key.lstrip("HEXE-")
+#     with postgres_conn().cursor() as cursor:
+#         cursor.execute(
+#             "SELECT 1 FROM webhooks WHERE api_key = %s AND subscription_id = %s",
+#             (api_key, subscription_id),
+#         )
+#         result = cursor.fetchone()
+#         if result is None:
+#             raise HTTPException(status_code=400, detail="Webhook does not exist")
+#         utils.unsubscribe_webhook(subscription_id)
+#         cursor.execute(
+#             "DELETE FROM webhooks WHERE api_key = %s AND subscription_id = %s",
+#             (api_key, subscription_id),
+#         )
+#         cursor.execute("COMMIT")
+#     return {"status": "success"}
 
 
-@app.webhooks.post("match-metadata-created")
-def match_metadata_created() -> MatchCreatedWebhookPayload:
-    """
-    Webhook for when a match metadata is created.
-
-    To verify the webhook read this: https://documentation.hook0.com/docs/verifying-webhook-signatures
-    """
-    pass
+# @app.webhooks.post("match-metadata-created")
+# def match_metadata_created() -> MatchCreatedWebhookPayload:
+#     """
+#     Webhook for when a match metadata is created.
+#
+#     To verify the webhook read this: https://documentation.hook0.com/docs/verifying-webhook-signatures
+#     """
+#     pass
 
 
 if __name__ == "__main__":

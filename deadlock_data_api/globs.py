@@ -1,7 +1,3 @@
-import psycopg2
-
-from deadlock_data_api.conf import CONFIG
-
 # CH_POOL = ChPool(
 #     host=CONFIG.clickhouse.host,
 #     port=CONFIG.clickhouse.port,
@@ -44,10 +40,10 @@ from deadlock_data_api.conf import CONFIG
 #     )
 
 
-def postgres_conn():
-    return psycopg2.connect(
-        host=CONFIG.postgres.host,
-        port=CONFIG.postgres.port,
-        user="postgres",
-        password=CONFIG.postgres.password,
-    )
+# def postgres_conn():
+#     return psycopg2.connect(
+#         host=CONFIG.postgres.host,
+#         port=CONFIG.postgres.port,
+#         user="postgres",
+#         password=CONFIG.postgres.password,
+#     )
