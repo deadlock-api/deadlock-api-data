@@ -1,5 +1,6 @@
-import requests
 from fastapi import APIRouter
+from starlette.responses import RedirectResponse
+from starlette.status import HTTP_301_MOVED_PERMANENTLY
 
 router = APIRouter(prefix="/v2", tags=["V2"])
 
@@ -14,8 +15,8 @@ router = APIRouter(prefix="/v2", tags=["V2"])
     """,
     deprecated=True,
 )
-def player_match_history(account_id: int) -> dict:
-    data = requests.get(
-        f"https://api.deadlock-api.com/v1/players/{account_id}/match-history"
-    ).json()
-    return {"cursor": 0, "matches": data}
+def player_match_history(account_id: int) -> RedirectResponse:
+    return RedirectResponse(
+        f"https://api.deadlock-api.com/v2/players/{account_id}/match-history",
+        HTTP_301_MOVED_PERMANENTLY,
+    )
