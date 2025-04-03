@@ -1,5 +1,1 @@
-# Deadlock Data API
-
-A dynamic API that contains live game data.
-
-Documentation: https://data.deadlock-api.com
+# Moved to https://github.com/deadlock-api/deadlock-api-rust
