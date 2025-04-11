@@ -4,7 +4,6 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
-from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import PlainTextResponse, RedirectResponse
 
 from deadlock_data_api.routers import base, v1, v2
@@ -31,11 +30,6 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
-)
-app.add_middleware(
-    GZipMiddleware,
-    minimum_size=1000,
-    compresslevel=5,
 )
 instrumentator = Instrumentator(should_group_status_codes=False).instrument(app)
 

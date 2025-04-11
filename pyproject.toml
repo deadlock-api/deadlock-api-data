@@ -6,14 +6,10 @@ authors = [
     { name = "Manuel Raimann", email = "raimannma@outlook.de" },
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
-    "cachetools>=5.5.0",
     "fastapi>=0.115.4",
-    "prometheus-fastapi-instrumentator>=7.0.0",
-    "psycopg2-binary>=2.9.10",
-    "requests>=2.32.3",
-    "retry>=0.9.2",
+    "prometheus-fastapi-instrumentator>=7.1.0",
     "uvicorn>=0.34.0",
 ]
 
