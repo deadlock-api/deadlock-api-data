@@ -7,7 +7,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import PlainTextResponse, RedirectResponse
 
-from deadlock_data_api.routers import base, v1, v1_commands, v2
+from deadlock_data_api.routers import base, v1, v2
 
 # Doesn't use AppConfig because logging is critical
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "DEBUG"))
@@ -47,7 +47,6 @@ async def _startup():
 
 app.include_router(v2.router)
 app.include_router(v1.router)
-app.include_router(v1_commands.router)
 app.include_router(base.router, include_in_schema=False)
 
 
