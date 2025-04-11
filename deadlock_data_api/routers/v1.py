@@ -7,9 +7,6 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.status import HTTP_301_MOVED_PERMANENTLY
 
-# CACHE_AGE_ACTIVE_MATCHES = 20
-# CACHE_AGE_BUILDS = 5 * 60
-
 LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1", tags=["V1"])
@@ -267,22 +264,6 @@ def get_raw_metadata_file_old(match_id: int):
     return RedirectResponse(
         url=f"/v1/matches/{match_id}/raw-metadata", status_code=HTTP_301_MOVED_PERMANENTLY
     )
-
-
-# def cache_metadata_background(match_id: int, metafile: bytes, upload_to_main: bool = False):
-#     if upload_to_main:
-#         try:
-#             s3_main_conn().put_object(
-#                 Bucket=CONFIG.s3_main.meta_file_bucket_name,
-#                 Key=f"ingest/metadata/{match_id}.meta.bz2",
-#                 Body=metafile,
-#             )
-#         except Exception:
-#             LOGGER.error("Failed to upload metadata to s3")
-#     try:
-#         cache_file(f"{match_id}.meta.bz2", metafile)
-#     except Exception as e:
-#         LOGGER.error(f"Failed to cache metadata: {e}")
 
 
 @router.get(
